@@ -1,6 +1,7 @@
 from __future__ import annotations
 import pandas as pd
 from dotenv import load_dotenv
+from typing import Literal
 import os
 from sklearn.impute import SimpleImputer
 from sqlalchemy import create_engine
@@ -9,6 +10,7 @@ from sqlalchemy import create_engine
 # --- Env Data ---
 load_dotenv()
 CSV_FILE_LOCATION = os.getenv("CSV_FILE_LOCATION")
+SECOND_CSV_FILE_LOCATION = os.getenv("SECOND_CSV_FILE_LOCATION")
 
 # --- Read DataSources ---
 class DataLoader:
@@ -56,35 +58,41 @@ class DataLoader:
             self._data = pd.DataFrame()  # Set an empty DataFrame on error
             return self
 
-    def __aggregate_data_sources(self, dfs: list[pd.DataFrame]) -> DataLoader:
+    def add_data_sources(self, df: pd.DataFrame, axis: Literal[0, 1] = 0) -> DataLoader:
         """
-        Aggregates multiple DataFrames into a single DataFrame.
+        Adds a DataFrame to the existing data.
 
         Args:
-            dfs (list[pd.DataFrame]): A list of DataFrames to aggregate.
+            df (pd.DataFrame): The DataFrame to add.
+            axis (int): The axis along which to concatenate the DataFrames.
 
         Returns:
-            DataLoader: The DataLoader instance with the aggregated data.
+            DataLoader: The DataLoader instance with the added data.
         """
-        self._data = pd.concat(dfs, ignore_index=True)
+        if self._data.empty:
+            self._data = df
+        else:
+            self._data = pd.concat([self._data, df], axis=axis)
         return self
 
-    def show_dataframe_info(self, df: pd.DataFrame) -> DataLoader:
+    def show_dataframe_info(self, df: pd.DataFrame | None = None) -> DataLoader:
         """
         Displays information about the DataFrame.
 
         Args:
             df (pd.DataFrame): The DataFrame to display information for.
         """
-        print("DataFrame Info:")
-        print(self._data.info())
-        print("\nDataFrame Head:")
-        print(self._data.head())
+        if df is None:
+            df = self._data
+        print('-'*10 + "DataFrame Info" + '-'*10)
+        df.info()
+        print('-'*10 + "DataFrame Head" + '-'*10)
+        print(df.head())
         return self
 
 def main():
     data = DataLoader()
-    data.read_csv(str(CSV_FILE_LOCATION)).show_dataframe_info(data._data)
+    data.add_data_sources(pd.read_csv(str(CSV_FILE_LOCATION))).show_dataframe_info().add_data_sources(pd.read_csv(str(SECOND_CSV_FILE_LOCATION)), axis=1).show_dataframe_info()
 
 if __name__ == "__main__":
     main()
