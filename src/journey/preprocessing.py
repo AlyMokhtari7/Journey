@@ -1,0 +1,135 @@
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
+
+from journey.dataLoader import DataLoader
+from journey.intermediate_artifacts import DataBundle
+from journey.splitter import Splitter
+
+
+class DataProcessor:
+    def __init__(self, dataLoader: DataLoader):
+        self._data_split: DataBundle
+        self._processing_steps: list[str] = []
+        self._scaler = None
+        self._target_scaler = None
+
+    def process_data(self, df: pd.DataFrame):
+        pass
+
+    # --------- Scaling -----------
+    def scale_data(self, method: str = "standard", scale_target: bool=False) -> DataProcessor:
+        """
+        Scales the data in the DataFrame using the specified scaling method.
+
+        Args:
+            df (pd.DataFrame): The DataFrame to scale.
+            method (str): The scaling method ('standard', 'minmax', or 'robust').
+
+        Returns:
+            pd.DataFrame: A DataFrame with scaled data.
+        """
+
+        Scaler_methods = {
+            "standard": StandardScaler,
+            "minmax": MinMaxScaler,
+            "robust": RobustScaler
+        }
+        
+
+        if method not in Scaler_methods:
+            raise ValueError(
+                "Invalid scaling method. Choose 'standard', 'minmax', or 'robust'."
+            )
+
+        # Holds all the scalers, including the target scaler if needed
+        Scalers = { 
+            "features": Scaler_methods[method]()
+        }
+
+        X_train = self._data_split["features"]["_X_train"]
+        Scalers["features"].fit(X_train)  # Fit the scaler on the training data
+
+        if scale_target:
+            Scalers["target"] = Scaler_methods[method]() 
+            Scalers["target"].fit(
+                self._data_split["target"]["_y_train"]
+            )
+        
+
+        for split, scaler in Scalers.items():
+            for subset, data in self._data_split[split].items():
+                subset_scaled = scaler.transform(data)
+                
+                # Preserve DataFrame structure if the inputs are DataFrames
+                self._data_split[split][subset] = pd.DataFrame(
+                    subset_scaled,
+                    columns=data.columns,
+                    index=data.index,
+                )
+
+        self._scaler = Scalers["features"]
+        if scale_target:
+            self._target_scaler = Scalers["target"]
+
+        return self
+
+    def drop_columns_with_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Drops columns from the DataFrame that contain any missing values.
+
+        Args:
+            df (pd.DataFrame): The DataFrame to process.
+
+        Returns:
+            pd.DataFrame: A DataFrame with columns containing missing values dropped.
+        """
+        return df.dropna(axis=1)
+
+    def imputation(self, df: pd.DataFrame, strategy: str = "mean") -> pd.DataFrame:
+        """
+        Imputes missing values in the DataFrame using the specified strategy.
+
+        Args:
+            df (pd.DataFrame): The DataFrame to process.
+            strategy (str): The imputation strategy ('mean', 'median', or 'mode').
+
+        Returns:
+            pd.DataFrame: A DataFrame with missing values imputed.
+        """
+        if strategy == "mean":
+            return df.fillna(df.mean())
+        elif strategy == "median":
+            return df.fillna(df.median())
+        elif strategy == "mode":
+            return df.fillna(df.mode().iloc[0])
+        else:
+            raise ValueError(
+                "Invalid imputation strategy. Choose 'mean', 'median', or 'mode'."
+            )
+
+    def imputation_with_exteention(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Imputes missing values in the DataFrame and adds indicator columns for missing values.
+
+        Returns:
+            pd.DataFrame: A DataFrame with missing values imputed and indicator columns added.
+        """
+
+        # Get names of columns with missing values
+        cols_with_missing = [col for col in df.columns if df[col].isnull().any()]
+
+        temp_df = df.copy()
+
+        for col in cols_with_missing:
+            temp_df[col + "_was_missing"] = temp_df[col].isnull()
+
+        my_imputer = SimpleImputer()
+        imputed_df = pd.DataFrame(my_imputer.fit_transform(temp_df))
+
+        # Imputation removed column names; put them back
+        imputed_df.columns = temp_df.columns
+        return imputed_df
