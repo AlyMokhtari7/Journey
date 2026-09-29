@@ -16,12 +16,15 @@ class DataProcessor:
         self._processing_steps: list[str] = []
         self._scaler = None
         self._target_scaler = None
+        self._encoders = {}
 
     def process_data(self, df: pd.DataFrame):
         pass
 
     # --------- Scaling -----------
-    def scale_data(self, method: str = "standard", scale_target: bool=False) -> DataProcessor:
+    def scale_data(
+        self, method: str = "standard", scale_target: bool = False
+    ) -> DataProcessor:
         """
         Scales the data in the DataFrame using the specified scaling method.
 
@@ -36,9 +39,8 @@ class DataProcessor:
         Scaler_methods = {
             "standard": preprocessing.StandardScaler,
             "minmax": preprocessing.MinMaxScaler,
-            "robust": preprocessing.RobustScaler
+            "robust": preprocessing.RobustScaler,
         }
-        
 
         if method not in Scaler_methods:
             raise ValueError(
@@ -46,25 +48,20 @@ class DataProcessor:
             )
 
         # Holds all the scalers, including the target scaler if needed
-        Scalers = { 
-            "features": Scaler_methods[method]()
-        }
+        Scalers = {"features": Scaler_methods[method]()}
 
         X_train = self._data_bundle.features["_X_train"]
         Scalers["features"].fit(X_train)  # Fit the scaler on the training data
 
         if scale_target:
-            Scalers["target"] = Scaler_methods[method]() 
-            Scalers["target"].fit(
-                self._data_bundle.target["_y_train"]
-            )
-        
+            Scalers["target"] = Scaler_methods[method]()
+            Scalers["target"].fit(self._data_bundle.target["_y_train"])
 
         for split, scaler in Scalers.items():
             data_bundle_part = getattr(self._data_bundle, split)
             for subset, data in data_bundle_part.items():
                 subset_scaled = scaler.transform(data)
-                
+
                 # Preserve DataFrame structure if the inputs are DataFrames
                 data_bundle_part[subset] = pd.DataFrame(
                     subset_scaled,
@@ -79,25 +76,57 @@ class DataProcessor:
         return self
 
     # --------- Normalization -----------
-    def normalize_vectors(self, norm: Literal["l1", "l2", "max"] = "l1", normalize_target: bool = False) -> DataProcessor:
-        
+    def normalize_vectors(
+        self, norm: Literal["l1", "l2", "max"] = "l1", normalize_target: bool = False
+    ) -> DataProcessor:
+
         splits_to_normalize = ["features"]
 
         if normalize_target:
             splits_to_normalize.append("target")
-        
+
         for split in splits_to_normalize:
             data_bundle_part = getattr(self._data_bundle, split)
             for subset, data in data_bundle_part.items():
                 subset_normalized = preprocessing.normalize(data, norm=norm)
-                
+
                 # Preserve DataFrame structure if the inputs are DataFrames
                 data_bundle_part[subset] = pd.DataFrame(
                     subset_normalized,
                     columns=data.columns,
                     index=data.index,
                 )
-        
+
+        return self
+
+    # --------- Encoding -----------
+    def encode_data_features(self) -> DataProcessor:
+        enc = preprocessing.OrdinalEncoder(
+            handle_unknown="use_encoded_value",
+            unknown_value=-1,
+        )
+
+        data_bundle_part = self._data_bundle.features
+
+        categorical_cols = (
+            data_bundle_part["_X_train"]
+            .select_dtypes(include=["object", "category"])
+            .columns.tolist()
+        )  # Cat-cols from _X_train is the same as _X_test
+
+        enc.fit(data_bundle_part["_X_train"][categorical_cols])
+
+        for subset, data in data_bundle_part.items():
+            encoded_subset = enc.transform(data[categorical_cols])
+
+            data = data.copy()
+
+            data.loc[:, categorical_cols] = encoded_subset
+
+            data_bundle_part[subset] = data
+
+        self._encoders["ordinal"] = enc
+
         return self
 
     def drop_columns_with_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -134,7 +163,7 @@ class DataProcessor:
                 "Invalid imputation strategy. Choose 'mean', 'median', or 'mode'."
             )
 
-    def imputation_with_exteention(self, df: pd.DataFrame) -> pd.DataFrame:
+    def imputation_with_extention(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Imputes missing values in the DataFrame and adds indicator columns for missing values.
 
