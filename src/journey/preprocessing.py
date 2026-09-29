@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import numpy as np
+from typing import Literal
+
 import pandas as pd
+from sklearn import preprocessing
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
 from journey.intermediate_artifacts import DataBundle, DataSet
 from journey.splitter import Splitter
@@ -33,9 +34,9 @@ class DataProcessor:
         """
 
         Scaler_methods = {
-            "standard": StandardScaler,
-            "minmax": MinMaxScaler,
-            "robust": RobustScaler
+            "standard": preprocessing.StandardScaler,
+            "minmax": preprocessing.MinMaxScaler,
+            "robust": preprocessing.RobustScaler
         }
         
 
@@ -65,7 +66,7 @@ class DataProcessor:
                 subset_scaled = scaler.transform(data)
                 
                 # Preserve DataFrame structure if the inputs are DataFrames
-                data_bundle_part.features[subset] = pd.DataFrame(
+                data_bundle_part[subset] = pd.DataFrame(
                     subset_scaled,
                     columns=data.columns,
                     index=data.index,
@@ -75,6 +76,28 @@ class DataProcessor:
         if scale_target:
             self._target_scaler = Scalers["target"]
 
+        return self
+
+    # --------- Normalization -----------
+    def normalize_vectors(self, norm: Literal["l1", "l2", "max"] = "l1", normalize_target: bool = False) -> DataProcessor:
+        
+        splits_to_normalize = ["features"]
+
+        if normalize_target:
+            splits_to_normalize.append("target")
+        
+        for split in splits_to_normalize:
+            data_bundle_part = getattr(self._data_bundle, split)
+            for subset, data in data_bundle_part.items():
+                subset_normalized = preprocessing.normalize(data, norm=norm)
+                
+                # Preserve DataFrame structure if the inputs are DataFrames
+                data_bundle_part[subset] = pd.DataFrame(
+                    subset_normalized,
+                    columns=data.columns,
+                    index=data.index,
+                )
+        
         return self
 
     def drop_columns_with_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
