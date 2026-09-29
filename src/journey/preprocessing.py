@@ -5,14 +5,13 @@ import pandas as pd
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
-from journey.dataLoader import DataLoader
-from journey.intermediate_artifacts import DataBundle
+from journey.intermediate_artifacts import DataBundle, DataSet
 from journey.splitter import Splitter
 
 
 class DataProcessor:
-    def __init__(self, dataLoader: DataLoader):
-        self._data_split: DataBundle
+    def __init__(self, dataset: DataSet):
+        self._data_bundle: DataBundle = Splitter.split_data(dataset)
         self._processing_steps: list[str] = []
         self._scaler = None
         self._target_scaler = None
@@ -50,22 +49,23 @@ class DataProcessor:
             "features": Scaler_methods[method]()
         }
 
-        X_train = self._data_split["features"]["_X_train"]
+        X_train = self._data_bundle.features["_X_train"]
         Scalers["features"].fit(X_train)  # Fit the scaler on the training data
 
         if scale_target:
             Scalers["target"] = Scaler_methods[method]() 
             Scalers["target"].fit(
-                self._data_split["target"]["_y_train"]
+                self._data_bundle.target["_y_train"]
             )
         
 
         for split, scaler in Scalers.items():
-            for subset, data in self._data_split[split].items():
+            data_bundle_part = getattr(self._data_bundle, split)
+            for subset, data in data_bundle_part.items():
                 subset_scaled = scaler.transform(data)
                 
                 # Preserve DataFrame structure if the inputs are DataFrames
-                self._data_split[split][subset] = pd.DataFrame(
+                data_bundle_part.features[subset] = pd.DataFrame(
                     subset_scaled,
                     columns=data.columns,
                     index=data.index,

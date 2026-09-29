@@ -9,7 +9,6 @@ from sklearn.model_selection import train_test_split
 from sqlalchemy import create_engine
 
 from journey.intermediate_artifacts import DataSet
-from journey.splitter import Splitter
 
 # --- Env Data ---
 load_dotenv()
@@ -88,9 +87,6 @@ class DataLoader:
                 target_column = str(
                     df.iloc[:, -1].name
                 )  # Use the last column as the target if not specified
-            Splitter.split_data(
-                self._data_set, target_column=target_column
-            )  # Split the data after adding new sources
         return self
 
     def show_dataframe_info(self, df: pd.DataFrame | None = None) -> DataLoader:
