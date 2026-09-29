@@ -24,6 +24,17 @@ class DataLoader:
         self._data_set: DataSet = DataSet(__empty_df)  # Initialize with an empty DataFrame
         
 
+    def load_sklearn_sample_dateset(self) -> DataLoader:
+        # for now it works with wine DataSet
+        from sklearn.datasets import load_wine
+        
+        df = load_wine(return_X_y=False, as_frame=True)
+        self._data_set = DataSet(df.frame) # type: ignore
+        
+        return self
+
+
+
     def read_csv(self, file_path: str) -> DataLoader:
         """
         Reads a CSV file and returns a pandas DataFrame.
@@ -107,11 +118,13 @@ class DataLoader:
 
 def main():
     data = DataLoader()
-    data.add_data_sources(
-        pd.read_csv(str(CSV_FILE_LOCATION))
-    ).show_dataframe_info().add_data_sources(
-        pd.read_csv(str(SECOND_CSV_FILE_LOCATION)), axis=1
-    ).show_dataframe_info()
+    # data.add_data_sources(
+    #     pd.read_csv(str(CSV_FILE_LOCATION))
+    # ).show_dataframe_info().add_data_sources(
+    #     pd.read_csv(str(SECOND_CSV_FILE_LOCATION)), axis=1
+    # ).show_dataframe_info()
+
+    data.load_sklearn_sample_dateset()
 
 
 if __name__ == "__main__":

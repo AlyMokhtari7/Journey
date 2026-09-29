@@ -14,7 +14,7 @@ class DataProcessor:
     def __init__(self, dataset: DataSet):
         self._data_bundle: DataBundle = Splitter.split_data(dataset)
         self._processing_steps: list[str] = []
-        self._scaler = None
+        self._scaler: preprocessing.StandardScaler | preprocessing.RobustScaler | preprocessing.MinMaxScaler = preprocessing.StandardScaler()
         self._target_scaler = None
         self._encoders = {}
 
