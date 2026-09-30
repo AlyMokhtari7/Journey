@@ -11,13 +11,12 @@ from journey.dataLoader import DataLoader
 from journey.plot import *
 from journey.preprocessing import DataProcessor
 
-data = DataLoader()
-data.load_sklearn_sample_dateset()
+data_set = DataLoader().load_sklearn_sample_dateset()
 
-processor = DataProcessor(data._data_set) # splits the data Automatically
+processor = DataProcessor(data_set._data_set) # splits the data Automatically
 
 
-X_plot = data._data_set.data[["proline", "hue"]]
+X_plot = data_set._data_set.data[["proline", "hue"]]
 
 scaler = StandardScaler()
 
@@ -27,7 +26,7 @@ X_plot_scaled = pd.DataFrame(
     index=X_plot.index,
 )
 
-y = data._data_set.data['target']
+y = data_set._data_set.data['target']
 
 model = KNeighborsClassifier(n_neighbors=20).fit(X_plot_scaled, y)
 disp = DecisionBoundaryDisplay.from_estimator(
