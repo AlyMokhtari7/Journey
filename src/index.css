@@ -1,4 +1,7 @@
-@import url('@xyflow/react/dist/style.css');
+@import "tailwindcss";
+@layer base {
+  @import url('@xyflow/react/dist/style.css');
+}
 html,
 body {
   margin: 0;
