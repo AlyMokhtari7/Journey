@@ -18,9 +18,6 @@ app.add_middleware(
 def execute_workflow(workflow_model: journey.backend.intermediate_artifacts.WorkflowModel):
     workflow = Workflow()
 
-    print('------Workflow nodes-------\n', workflow_model.nodes)
-    print('------Workflow edges-------\n', workflow_model.edges)
-
     workflow.create_graph(workflow_model.nodes, workflow_model.edges)
 
     return {"status": "received"}

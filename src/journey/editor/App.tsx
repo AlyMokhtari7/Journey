@@ -8,27 +8,27 @@ const nodeTypes = {
 };
 
 const initialNodes: Array<nodeType> = [
-  {
-    id: 'n1',
-    position: { x: 0, y: 0 },
-    data: { label: 'Node 1' },
-  },
-  {
-    id: 'n2',
-    // type: 'loadData',
-    position: { x: 100, y: 100 },
-    data: { label: 'Node 2' },
-  },
+  // {
+  //   id: 'n1',
+  //   position: { x: 0, y: 0 },
+  //   data: { label: 'Node 1' },
+  // },
+  // {
+  //   id: 'n2',
+  //   // type: 'loadData',
+  //   position: { x: 100, y: 100 },
+  //   data: { label: 'Node 2' },
+  // },
 ];
 
 const initialEdges: Array<edgeType> = [
-  {
-    id: 'n1-n2',
-    source: 'n1',
-    target: 'n2',
-    type: 'smoothstep',
-    label: 'First-conn'
-  },
+  // {
+  //   id: 'n1-n2',
+  //   source: 'n1',
+  //   target: 'n2',
+  //   type: 'smoothstep',
+  //   label: 'First-conn'
+  // },
 ];
 
 export default function App() {

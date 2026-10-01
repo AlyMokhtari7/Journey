@@ -5,7 +5,6 @@ from typing import Literal
 
 import pandas as pd
 from dotenv import load_dotenv
-from sklearn.model_selection import train_test_split
 from sqlalchemy import create_engine
 
 from journey.backend.intermediate_artifacts import DataSet
@@ -30,12 +29,12 @@ class DataLoader:
         
         df = load_wine(return_X_y=False, as_frame=True)
         self._data_set = DataSet(df.frame) # type: ignore
-        
+
         return self
 
 
 
-    def read_csv(self, file_path: str) -> DataLoader:
+    def read_csv(self, file_path: str = str(CSV_FILE_LOCATION)) -> DataLoader:
         """
         Reads a CSV file and returns a pandas DataFrame.
 
