@@ -6,8 +6,8 @@ import pandas as pd
 from sklearn import preprocessing
 from sklearn.impute import SimpleImputer
 
-from journey.intermediate_artifacts import DataBundle, DataSet
-from journey.splitter import Splitter
+from journey.backend.intermediate_artifacts import DataBundle, DataSet
+from journey.backend.splitter import Splitter
 
 
 class DataProcessor:

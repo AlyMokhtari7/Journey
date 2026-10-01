@@ -10,6 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi[standard]>=0.142.2",
     "matplotlib>=3.11.2",
+    "networkx[default]>=3.6.1",
     "numpy>=2.4.6",
     "pandas>=3.0.5",
     "psycopg2-binary>=2.9.13",

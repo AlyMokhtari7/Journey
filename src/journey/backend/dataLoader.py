@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from sklearn.model_selection import train_test_split
 from sqlalchemy import create_engine
 
-from journey.intermediate_artifacts import DataSet
+from journey.backend.intermediate_artifacts import DataSet
 
 # --- Env Data ---
 load_dotenv()

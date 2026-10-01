@@ -38,8 +38,6 @@ export default function App({nodeTypes, initialNodes, initialEdges}: {nodeTypes:
     [],
   );
 
-  useEffect(() => {send_workflow(nodes, edges)}, [nodes, edges])
-
   function createNode(data: {label: string}, type: "" | "input" | "output" = "input") {
     const id = crypto.randomUUID();
 
@@ -55,9 +53,10 @@ export default function App({nodeTypes, initialNodes, initialEdges}: {nodeTypes:
     <>
       <div className='flex'>
         <div className='bg-amber-100' style={{width: '30vw', height: '100vh'}}>
-          <button onClick={() => createNode({label: "new CSV node"})}>Add CSV Data</button>
-          <button onClick={() => createNode({label: "new DB node"})}>Add DataBase</button>
-          <button onClick={() => createNode({label: "new Sklearn DS node"})}>Add sklearn DS</button>
+          <div onClick={() => createNode({label: "new CSV node"})}>Add CSV Data</div>
+          <div onClick={() => createNode({label: "new DB node"})}>Add DataBase</div>
+          <div onClick={() => createNode({label: "new Sklearn DS node"})}>Add sklearn DS</div>
+          <div onClick={() => send_workflow(nodes, edges)}>Save</div>
         </div>
         <div style={{ width: '70vw', height: '100vh' }}>
           <ReactFlow

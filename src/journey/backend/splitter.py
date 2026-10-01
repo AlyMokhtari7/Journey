@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from journey.intermediate_artifacts import DataBundle, DataSet
+from journey.backend.intermediate_artifacts import DataBundle, DataSet
 
 
 class Splitter:

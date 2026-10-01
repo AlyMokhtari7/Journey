@@ -7,9 +7,9 @@ from sklearn.inspection import DecisionBoundaryDisplay
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 
-from journey.dataLoader import DataLoader
-from journey.plot import *
-from journey.preprocessing import DataProcessor
+from journey.backend.dataLoader import DataLoader
+from journey.backend.plot import *
+from journey.backend.preprocessing import DataProcessor
 
 data_set = DataLoader().load_sklearn_sample_dateset()
 
