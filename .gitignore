@@ -39,3 +39,6 @@ uv.lock
 
 public/*
 src/assets
+
+# Vitest reports and artifacts
+.vitest/

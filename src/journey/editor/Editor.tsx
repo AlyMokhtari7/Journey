@@ -59,7 +59,7 @@ export default function App({nodeTypes, initialNodes, initialEdges}: {nodeTypes:
           <div onClick={() => createNode({label: "new DB node", category: "DataLoader/data/loadDB"})}>Add DataBase</div>
           <div onClick={() => createNode({label: "new Sklearn DS node", category: "DataLoader/data/SkLearn"})}>Add sklearn DS</div>
           <div onClick={() => createNode({label: "new Show Data Info node", category: "DataLoader/show_data_info"}, "output")}>Add Show Data Info</div>
-          <div onClick={() => createNode({label: "new Aggregate Data node", category: "DataLoader/aggregate_data"})}>Add Aggregate Data</div>
+          <div onClick={() => createNode({label: "new Aggregate Data node", category: "DataLoader/aggregate_data"}, "")}>Add Aggregate Data</div>
           <div onClick={() => send_workflow(nodes, edges)}>Save</div>
         </div>
         <div style={{ width: '70vw', height: '100vh' }}>

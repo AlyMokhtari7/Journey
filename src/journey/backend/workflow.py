@@ -6,6 +6,7 @@ from journey.backend.intermediate_artifacts import (
     WorkflowEdge,
     WorkflowNode,
 )
+from journey.backend.preprocessing import DataProcessor
 
 
 class Workflow:
@@ -13,7 +14,13 @@ class Workflow:
     def __init__(self) -> None:
         self._name: str = 'New Workflow'
         self._network = nx.DiGraph()
-        self._data_loader = DataLoader()
+        self._data_loader: DataLoader = DataLoader()
+        self._data_processor = None
+        self._ = None
+
+    def initialize_data_processor(self):
+        if self._data_processor == None:
+            self._data_processor = DataProcessor(self._data_loader._data_set)
 
     def create_graph(self, nodes: list[WorkflowNode], edges: list[WorkflowEdge]):
         G = nx.DiGraph()
@@ -49,8 +56,9 @@ class Workflow:
             print(node_id, node_category)
 
             if node_category == NodeCategory.DATALOADER_DATA_LOAD_SKLEARN:
-                self._data_loader.load_sklearn_sample_dateset()
+                self._ = self._data_loader.load_sklearn_sample_dateset()
             elif node_category == NodeCategory.DATALOADER_SHOW_DATA_INFO:
                 print(self._data_loader.show_dataframe_info())
             elif node_category == NodeCategory.DATALOADER_DATA_LOAD_CSV:
-                self._data_loader.read_csv()
+                self._ = self._data_loader.read_csv()
+            

@@ -77,7 +77,7 @@ class DataLoader:
             return self
 
     def add_data_sources(
-        self, df: pd.DataFrame, axis: Literal[0, 1] = 0, target_column: str = ""
+        self, df: pd.DataFrame, axis: Literal[0, 1] = 1, target_column: str = ""
     ) -> DataLoader:
         """
         Adds a DataFrame to the existing data.
