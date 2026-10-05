@@ -11,20 +11,23 @@ from journey.backend.splitter import Splitter
 
 
 class DataProcessor:
-    def __init__(self, dataset: DataSet):
-        self._data_bundle: DataBundle = Splitter.split_data(dataset)
-        self._processing_steps: list[str] = []
-        self._scaler: preprocessing.StandardScaler | preprocessing.RobustScaler | preprocessing.MinMaxScaler = preprocessing.StandardScaler()
-        self._target_scaler = None
-        self._encoders = {}
+    # def __init__(self, dataset: DataSet):
+    #     self._data_bundle: DataBundle = Splitter.split_data(dataset)
+    #     self._processing_steps: list[str] = []
+    #     self._scaler: preprocessing.StandardScaler | preprocessing.RobustScaler | preprocessing.MinMaxScaler = preprocessing.StandardScaler()
+    #     self._target_scaler = None
+    #     self._encoders = {}
 
     def process_data(self, df: pd.DataFrame):
         pass
 
     # --------- Scaling -----------
-    def scale_data(
-        self, method: str = "standard", scale_target: bool = False
-    ) -> DataProcessor:
+    type AnyScaler = preprocessing.StandardScaler | preprocessing.RobustScaler | preprocessing.MinMaxScaler
+
+    @staticmethod
+    def scale_data(data_bundle: DataBundle,
+        method: str = "standard", scale_target: bool = False
+    ) -> tuple[DataBundle, AnyScaler, AnyScaler | None]:
         """
         Scales the data in the DataFrame using the specified scaling method.
 
@@ -50,15 +53,15 @@ class DataProcessor:
         # Holds all the scalers, including the target scaler if needed
         Scalers = {"features": Scaler_methods[method]()}
 
-        X_train = self._data_bundle.features["_X_train"]
+        X_train = data_bundle.features["_X_train"]
         Scalers["features"].fit(X_train)  # Fit the scaler on the training data
 
         if scale_target:
             Scalers["target"] = Scaler_methods[method]()
-            Scalers["target"].fit(self._data_bundle.target["_y_train"])
+            Scalers["target"].fit(data_bundle.target["_y_train"])
 
         for split, scaler in Scalers.items():
-            data_bundle_part = getattr(self._data_bundle, split)
+            data_bundle_part = getattr(data_bundle, split)
             for subset, data in data_bundle_part.items():
                 subset_scaled = scaler.transform(data)
 
@@ -69,11 +72,11 @@ class DataProcessor:
                     index=data.index,
                 )
 
-        self._scaler = Scalers["features"]
+        _scaler = Scalers["features"]
         if scale_target:
-            self._target_scaler = Scalers["target"]
+            _target_scaler = Scalers["target"]
 
-        return self
+        return data_bundle, _scaler, _target_scaler if scale_target else None
 
     # --------- Normalization -----------
     def normalize_vectors(
