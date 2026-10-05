@@ -3,7 +3,7 @@ import os
 
 import sqlalchemy as sa
 from dotenv import load_dotenv
-from sqlalchemy import inspect
+from sqlalchemy import Sequence, inspect
 from tabulate import tabulate
 
 # --- Env Data ---
@@ -29,41 +29,44 @@ class RDB:
             result = conn.execute(sa.text(f"SELECT * FROM {table_name} LIMIT 0"))
             return list(result.keys())
 
-    def __init__(self, connection_string: str):
-        self._engine: sa.Engine = sa.create_engine(connection_string)
-        self._metadata: sa.MetaData = sa.MetaData()
-        self._query: sa.Select | None = None
+    # def __init__(self, connection_string: str):
+    #     self._engine: sa.Engine = sa.create_engine(connection_string)
+    #     self._metadata: sa.MetaData = sa.MetaData()
+    #     self._query: sa.Select | None = None
 
     # ---------- Tables ----------
 
-    def get_table(self, table_name: str) -> sa.Table:
+    @staticmethod
+    def get_table(engine: sa.engine.Engine, metadata: sa.MetaData, table_name: str) -> sa.Table:
         return sa.Table(
             table_name,
-            self._metadata,
-            autoload_with=self._engine
+            metadata,
+            autoload_with=engine
         )
 
     # ---------- Query construction ----------
 
-    def select(self, table_name: str, *columns: str):
-        table = self.get_table(table_name)
+    @staticmethod
+    def select(table_name: str, *columns: str, engine: sa.engine.Engine, metadata: sa.MetaData) -> sa.Select:
+        table = RDB.get_table(engine, metadata, table_name)
 
         if columns:
             selected_columns = [
                 getattr(table.c, column)
                 for column in columns
             ]
-            self._query = sa.select(*selected_columns)
+            query = sa.select(*selected_columns)
         else:
-            self._query = sa.select(table)
+            query = sa.select(table)
 
-        return self
+        return query
 
-    def where_clause_on_col(self, col_name: str, operator: str, value):
-        if self._query is None:
+    @staticmethod
+    def where_clause_on_col(query: sa.Select, col_name: str, operator: str, value) -> sa.Select:
+        if query is None:
             raise RuntimeError("No query has been created.")
 
-        table = self._get_current_table()
+        table = RDB._get_current_table(query)
         column = getattr(table.c, col_name)
 
         operators = {
@@ -80,88 +83,96 @@ class RDB:
 
         condition = operators[operator](value)
 
-        self._query = self._query.where(condition)
+        query = query.where(condition)
 
-        return self
+        return query
 
-    def group_by(self, *columns: str):
-        if self._query is None:
+    @staticmethod
+    def group_by(query: sa.Select, *columns: str) -> sa.Select:
+        if query is None:
             raise RuntimeError("No query has been created.")
 
-        table = self._get_current_table()
+        table = RDB._get_current_table(query)
 
-        self._query = self._query.group_by(
+        query = query.group_by(
             *(getattr(table.c, column) for column in columns)
         )
 
-        return self
+        return query
 
-    def having(self, condition):
-        if self._query is None:
+    @staticmethod
+    def having(query: sa.Select, condition) -> sa.Select:
+        if query is None:
             raise RuntimeError("No query has been created.")
 
-        self._query = self._query.having(condition)
+        query = query.having(condition)
+        return query
 
-        return self
-
-    def order_by(self, column: str, descending: bool = False):
-        if self._query is None:
+    @staticmethod
+    def order_by(query: sa.Select, column: str, descending: bool = False) -> sa.Select:
+        if query is None:
             raise RuntimeError("No query has been created.")
 
-        table = self._get_current_table()
+        table = RDB._get_current_table(query)
 
         column_obj = getattr(table.c, column)
 
         if descending:
             column_obj = column_obj.desc()
 
-        self._query = self._query.order_by(column_obj)
+        query = query.order_by(column_obj)
 
-        return self
+        return query
 
-    def limit(self, limit: int):
-        if self._query is None:
+    @staticmethod
+    def limit(query: sa.Select, limit: int) -> sa.Select:
+        if query is None:
             raise RuntimeError("No query has been created.")
 
-        self._query = self._query.limit(limit)
+        query = query.limit(limit)
 
-        return self
+        return query
 
-    def offset(self, offset: int):
-        if self._query is None:
+    @staticmethod
+    def offset(query: sa.Select, offset: int) -> sa.Select:
+        if query is None:
             raise RuntimeError("No query has been created.")
 
-        self._query = self._query.offset(offset)
+        query = query.offset(offset)
 
-        return self
+        return query
 
     # ---------- Execution ----------
 
-    def execute(self):
-        if self._query is None:
+    @staticmethod
+    def execute(query: sa.Select, engine: sa.engine.Engine) -> Sequence[sa.engine.Row]:
+        if query is None:
             raise RuntimeError("No query has been created.")
 
-        with self._engine.connect() as conn:
-            result = conn.execute(self._query)
-            return result.fetchall()
+        with engine.connect() as conn:
+            result = conn.execute(query)
+            return result.fetchall()  # type: ignore todo: fix this type issue
 
     # ---------- Utilities ----------
 
-    def pretty_print(self, res):
+    @staticmethod
+    def pretty_print(res):
         print(tabulate(res, headers="keys", tablefmt="pretty"))
 
-    def show_query(self):
-        if self._query is None:
+    @staticmethod
+    def show_query(query: sa.Select):
+        if query is None:
             raise RuntimeError("No query has been created.")
 
-        print(self._query)
+        print(query)
 
-    def _get_current_table(self):
-        if self._query is None:
+    @staticmethod
+    def _get_current_table(query: sa.Select):
+        if query is None:
             raise RuntimeError("No query has been created.")
 
         # Get the first FROM clause
-        froms = self._query.get_final_froms()
+        froms = query.get_final_froms()
 
         if not froms:
             raise RuntimeError("Query has no table.")
@@ -169,9 +180,14 @@ class RDB:
         return froms[0]
 
 def main():
-    rdb = RDB(CONNECTION_STRING)  # type: ignore
-    table_name = "iris"  # Replace with your table name
-    rdb.pretty_print(rdb.select(table_name, "sepal_width", "species").limit(10).where_clause_on_col("sepal_width", "<=", 3.4).execute())
+    rdb = RDB()  # type: ignore
+    table_name = "iris"
+    engine: sa.engine.Engine = sa.create_engine(str(CONNECTION_STRING))
+    metadata: sa.MetaData = sa.MetaData()
+    query = rdb.select(table_name, "sepal_width", "species", engine = engine, metadata = metadata)
+    query = rdb.limit(query, 10)
+    query = rdb.where_clause_on_col(query, "sepal_width", "<=", 3.4)
+    rdb.pretty_print(rdb.execute(query, engine))  # type: ignore
 
 if __name__ == "__main__":
     main()

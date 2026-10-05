@@ -17,24 +17,23 @@ SECOND_CSV_FILE_LOCATION = os.getenv("SECOND_CSV_FILE_LOCATION")
 
 # --- Read DataSources ---
 class DataLoader:
-    def __init__(self, csv_file_location: str | None = CSV_FILE_LOCATION):
-        __empty_df = pd.DataFrame()
+    # def __init__(self, csv_file_location: str | None = CSV_FILE_LOCATION):
+    #     __empty_df = pd.DataFrame()
 
-        self._data_set: DataSet = DataSet(__empty_df)  # Initialize with an empty DataFrame
+    #     self._data_set: DataSet = DataSet(__empty_df)  # Initialize with an empty DataFrame
         
 
-    def load_sklearn_sample_dateset(self) -> DataLoader:
+    @staticmethod
+    def load_sklearn_sample_dateset() -> DataSet:
         # for now it works with wine DataSet
         from sklearn.datasets import load_wine
         
         df = load_wine(return_X_y=False, as_frame=True)
-        self._data_set = DataSet(df.frame) # type: ignore
-
-        return self
+        return DataSet(df.frame) # type: ignore
 
 
-
-    def read_csv(self, file_path: str = str(CSV_FILE_LOCATION)) -> DataLoader:
+    @staticmethod
+    def read_csv(file_path: str = str(CSV_FILE_LOCATION)) -> DataSet:
         """
         Reads a CSV file and returns a pandas DataFrame.
 
@@ -42,20 +41,19 @@ class DataLoader:
             file_path (str): The path to the CSV file.
 
         Returns:
-            DataLoader: The DataLoader instance with the loaded data.
+            DataSet: The DataSet instance with the loaded data.
         """
         try:
             df = pd.read_csv(file_path)
-            self._data_set.data = df
-            return self
+            return DataSet(df)
         except Exception as e:
             print(f"Error reading CSV file: {e}")
-            self._data_set.data = pd.DataFrame()  # Set an empty DataFrame on error
-            return self
+            return DataSet(pd.DataFrame()) # return an empty DataFrame on error
 
+    @staticmethod
     def read_from_postgres_to_pandas_df(
-        self, connection_string: str, query: str
-    ) -> DataLoader:
+        connection_string: str, query: str
+    ) -> DataSet:
         """
         Reads data from a PostgreSQL database and returns a pandas DataFrame.
 
@@ -64,21 +62,22 @@ class DataLoader:
             query (str): The SQL query to execute.
 
         Returns:
-            DataLoader: The DataLoader instance with the loaded data.
+            DataSet: The DataSet instance with the loaded data.
         """
         try:
             with create_engine(connection_string).connect() as conn:
                 df = pd.read_sql_query(query, conn)
-                self._data_set.data = df
-                return self
+                return DataSet(df)
         except Exception as e:
             print(f"Error reading from PostgreSQL: {e}")
-            self._data_set.data = pd.DataFrame()  # Set an empty DataFrame on error
-            return self
+            return DataSet(pd.DataFrame())  # return an empty DataFrame on error
 
+    @staticmethod
     def add_data_sources(
-        self, df: pd.DataFrame, axis: Literal[0, 1] = 1, target_column: str = ""
-    ) -> DataLoader:
+        df: pd.DataFrame, axis: Literal[0, 1] = 1, target_column: str = ""
+    ) -> DataSet:
+        # Todo: Target column should be handled properly, for now it is just a placeholder
+        
         """
         Adds a DataFrame to the existing data.
 
@@ -87,33 +86,25 @@ class DataLoader:
             axis (int): The axis along which to concatenate the DataFrames.
 
         Returns:
-            DataLoader: The DataLoader instance with the added data.
+            DataSet: The DataSet instance with the added data.
         """
-        if self._data_set.data.empty:
-            self._data_set.data = df
+        if df.empty:
+            return DataSet(pd.DataFrame())
         else:
-            self._data_set.data = pd.concat([self._data_set.data, df], axis=axis)
-            if target_column == "":
-                target_column = str(
-                    df.iloc[:, -1].name
-                )  # Use the last column as the target if not specified
-        return self
+            return DataSet(pd.concat([df, df], axis=axis))
 
-    def show_dataframe_info(self, df: pd.DataFrame | None = None) -> DataLoader:
+    @staticmethod
+    def show_dataframe_info(df: pd.DataFrame) -> None:
         """
         Displays information about the DataFrame.
 
         Args:
             df (pd.DataFrame): The DataFrame to display information for.
         """
-        if df is None:
-            df = self._data_set.data
         print("-" * 10 + "DataFrame Info" + "-" * 10)
         df.info()
         print("-" * 10 + "DataFrame Head" + "-" * 10)
         print(df.head())
-        return self
-
 
 def main():
     data = DataLoader()
