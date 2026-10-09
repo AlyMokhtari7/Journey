@@ -30,7 +30,9 @@ class WorkflowModel(BaseModel):
 class NodeCategory(str, enum.Enum):
     DATALOADER_DATA = "DataLoader/data"
     DATALOADER_DATA_LOAD_CSV = "DataLoader/data/loadCSV"
-    DATALOADER_DATA_LOAD_DB ="DataLoader/data/loadDB"
     DATALOADER_DATA_LOAD_SKLEARN = "DataLoader/data/SkLearn"
     DATALOADER_SHOW_DATA_INFO = "DataLoader/show_data_info"
     DATALOADER_AGGREGATE_DATA = "DataLoader/aggregate_data"
+
+    SQL_GET_DB_INSTANCE ="SQL/DB/GetInstance"
+    SQL_Select_on_Table ="SQL/Table/Select"

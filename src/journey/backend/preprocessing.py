@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Tuple
 
 import pandas as pd
 from sklearn import preprocessing
@@ -73,15 +73,17 @@ class DataProcessor:
                 )
 
         _scaler = Scalers["features"]
+        _target_scaler = None
         if scale_target:
             _target_scaler = Scalers["target"]
 
         return data_bundle, _scaler, _target_scaler if scale_target else None
 
     # --------- Normalization -----------
+    @staticmethod
     def normalize_vectors(
-        self, norm: Literal["l1", "l2", "max"] = "l1", normalize_target: bool = False
-    ) -> DataProcessor:
+        databundle: DataBundle, norm: Literal["l1", "l2", "max"] = "l1", normalize_target: bool = False
+    ) -> DataBundle:
 
         splits_to_normalize = ["features"]
 
@@ -89,7 +91,7 @@ class DataProcessor:
             splits_to_normalize.append("target")
 
         for split in splits_to_normalize:
-            data_bundle_part = getattr(self._data_bundle, split)
+            data_bundle_part = getattr(databundle, split)
             for subset, data in data_bundle_part.items():
                 subset_normalized = preprocessing.normalize(data, norm=norm)
 
@@ -100,16 +102,17 @@ class DataProcessor:
                     index=data.index,
                 )
 
-        return self
+        return databundle
 
     # --------- Encoding -----------
-    def encode_data_features(self) -> DataProcessor:
+    @staticmethod
+    def encode_data_features(databundle: DataBundle) -> tuple[DataBundle, preprocessing.OrdinalEncoder]:
         enc = preprocessing.OrdinalEncoder(
             handle_unknown="use_encoded_value",
             unknown_value=-1,
         )
 
-        data_bundle_part = self._data_bundle.features
+        data_bundle_part = databundle.features
 
         categorical_cols = (
             data_bundle_part["_X_train"]
@@ -128,11 +131,12 @@ class DataProcessor:
 
             data_bundle_part[subset] = data
 
-        self._encoders["ordinal"] = enc
+        _encoder = enc
 
-        return self
+        return databundle, _encoder
 
-    def drop_columns_with_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
+    @staticmethod
+    def drop_columns_with_missing_values(df: pd.DataFrame) -> DataSet:
         """
         Drops columns from the DataFrame that contain any missing values.
 
@@ -142,9 +146,10 @@ class DataProcessor:
         Returns:
             pd.DataFrame: A DataFrame with columns containing missing values dropped.
         """
-        return df.dropna(axis=1)
+        return DataSet(df.dropna(axis=1))
 
-    def imputation(self, df: pd.DataFrame, strategy: str = "mean") -> pd.DataFrame:
+    @staticmethod
+    def imputation(df: pd.DataFrame, strategy: str = "mean") -> DataSet:
         """
         Imputes missing values in the DataFrame using the specified strategy.
 
@@ -156,17 +161,18 @@ class DataProcessor:
             pd.DataFrame: A DataFrame with missing values imputed.
         """
         if strategy == "mean":
-            return df.fillna(df.mean())
+            return DataSet(df.fillna(df.mean()))
         elif strategy == "median":
-            return df.fillna(df.median())
+            return DataSet(df.fillna(df.median()))
         elif strategy == "mode":
-            return df.fillna(df.mode().iloc[0])
+            return DataSet(df.fillna(df.mode().iloc[0]))
         else:
             raise ValueError(
                 "Invalid imputation strategy. Choose 'mean', 'median', or 'mode'."
             )
 
-    def imputation_with_extention(self, df: pd.DataFrame) -> pd.DataFrame:
+    @staticmethod
+    def imputation_with_extension(df: pd.DataFrame) -> DataSet:
         """
         Imputes missing values in the DataFrame and adds indicator columns for missing values.
 
@@ -187,4 +193,4 @@ class DataProcessor:
 
         # Imputation removed column names; put them back
         imputed_df.columns = temp_df.columns
-        return imputed_df
+        return DataSet(imputed_df)

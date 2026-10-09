@@ -1,6 +1,4 @@
-import { Position, Handle } from '@xyflow/react';
-import type {nodeCategory} from '../../types'
-import styles from './LoadDataNode.module.css'
+import { useReactFlow } from '@xyflow/react';
 import { useEffect, useState } from 'react';
 
 async function get_table_names() : Promise<Array<string>> {
@@ -27,7 +25,7 @@ async function get_table_column_names(table_name: string): Promise<Array<string>
     return res.column_names;
 }
 
-async function load_data(table_name: string, columns: Array<string>): Promise<Array<any>> {
+async function load_data(table_name: string, columns: Array<string>): Promise<undefined> {
     await fetch(`http://localhost:8000/SQL/execute_query/${table_name}/${columns}`, {
         method: 'GET',
         headers: {
@@ -36,10 +34,11 @@ async function load_data(table_name: string, columns: Array<string>): Promise<Ar
     });
 }
 
-export default function LoadData(type: nodeCategory){
-
+export default function DataBaseNode({id}: {id: string}) {
     const [tables, setTables] = useState<string[]>([]);
     const [columns, setColumns] = useState<string[]>([]);
+    const [selectedTable, setSelectedTable] = useState<string>('');
+    const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
 
     useEffect(() => {
         get_table_names()
@@ -58,7 +57,7 @@ export default function LoadData(type: nodeCategory){
     const tables_selection = (
         <>
             <label htmlFor="tables">Choose table:</label>
-            <select name="tables" id="tables">
+            <select name="tables" id="tables" value={selectedTable} onChange={(e) => setSelectedTable(e.target.value)}>
                 {tables.map((table) => 
                     <option key={table} value={table}>{table}</option>
                 )}        
@@ -72,7 +71,13 @@ export default function LoadData(type: nodeCategory){
             <fieldset name="columns" id="columns">
                 {columns.map((column) => 
                     <div key={column}>
-                        <input type="checkbox" value={column} id={column} />
+                        <input type="checkbox" value={column} id={column} checked={selectedColumns.includes(column)} onChange={(e) => {
+                            if (e.target.checked) {
+                                setSelectedColumns([...selectedColumns, column]);
+                            } else {
+                                setSelectedColumns(selectedColumns.filter((c) => c !== column));
+                            }
+                        }} />
                         <label htmlFor={column}>{column}</label>
                     </div>
                 )}        
@@ -81,7 +86,7 @@ export default function LoadData(type: nodeCategory){
     );
 
     function handleLoadData() {
-        load_data(tables[0], columns)
+        load_data(selectedTable, selectedColumns)
     }
 
     return (

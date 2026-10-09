@@ -13,6 +13,11 @@ CONNECTION_STRING = os.getenv("CONNECTION_STRING")
 class RDB:
 
     @staticmethod
+    def get_instance(connection_string: str) -> sa.engine.Engine:
+        engine: sa.engine.Engine = sa.create_engine(connection_string)
+        return engine
+
+    @staticmethod
     def get_all_tables_name():   
         engine: sa.engine.Engine = sa.create_engine(str(CONNECTION_STRING)) 
         inspector = inspect(engine)
