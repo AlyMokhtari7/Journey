@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { ReactFlow, applyNodeChanges, applyEdgeChanges, Background, Controls, addEdge, type NodeChange, type EdgeChange } from '@xyflow/react';
 import type { nodeType, edgeType, nodeCategory } from './types';
 

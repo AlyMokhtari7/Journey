@@ -35,4 +35,4 @@ class NodeCategory(str, enum.Enum):
     DATALOADER_AGGREGATE_DATA = "DataLoader/aggregate_data"
 
     SQL_GET_DB_INSTANCE ="SQL/DB/GetInstance"
-    SQL_Select_on_Table ="SQL/Table/Select"
+    SQL_SELECT_ON_TABLE ="SQL/Table/Select"

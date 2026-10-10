@@ -1,9 +1,16 @@
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import journey.backend.intermediate_artifacts
-from journey.backend.workflow import Workflow
 from journey.backend.RDB import RDB
+from journey.backend.workflow import Workflow
+
+# --- Env Data ---
+load_dotenv()
+CONNECTION_STRING = os.getenv("CONNECTION_STRING")
 
 app = FastAPI()
 
@@ -38,9 +45,14 @@ def get_table_column_names(table_name: str):
 
 # @app.get("/SQL/execute_query/{table_name}/{columns}")
 # def execute_query(table_name: str, columns: str, limit: int = 10):
+#     engine = RDB.get_instance(str(CONNECTION_STRING))
+#     metadata = sa.MetaData()
+
 #     column_list = columns.split(",")
-#     workflow._dbRes = workflow._dbManager.select(table_name, *column_list).limit(limit).execute() # type: ignore
-#     workflow._dbManager.pretty_print(workflow._dbRes)
+#     _dbRes = RDB.select(table_name, *column_list, engine=engine, metadata=metadata)
+#     _dbRes = RDB.limit(_dbRes, limit)
+#     _dbRes = RDB.execute(engine=engine, query=_dbRes)
+#     RDB.pretty_print(_dbRes)
 
 #     print('Query executed')
 #     return {"status": "query executed"}
