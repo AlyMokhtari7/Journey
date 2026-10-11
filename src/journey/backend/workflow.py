@@ -12,21 +12,46 @@ from journey.backend.intermediate_artifacts import (
     WorkflowNode,
 )
 from journey.backend.RDB import RDB
+from journey.sdk.base import NodeModel
+from journey.sdk.utils import NodeUtils
+from modules.CSV.ReadCSV import ReadCSV
 
 # --- Env Data ---
 load_dotenv()
 CONNECTION_STRING = os.getenv("CONNECTION_STRING")
+CSV_FILE_LOCATION = os.getenv("CSV_FILE_LOCATION")
+
+class WorkflowUtils(NodeUtils):
+
+    def log(self, log_msg, node_name) -> None:
+        print(f'LOG/{node_name}/{log_msg}')
+
+    def set_error(self, err_msg, node_name) -> None:
+        print(f'ERR/{node_name}/{err_msg}')
+
 
 class Workflow:
-
     def __init__(self) -> None:
-        self._name: str = 'New Workflow'
+        self._name: str = "New Workflow"
         self._network = nx.DiGraph()
-        # self._dbManager = RDB(str(CONNECTION_STRING))
-        # self._dbRes: None | Sequence[Row] = None
-        # self._data_loader: DataLoader = DataLoader()
-        # self._data_processor = None
-        # self._runs: list[nx.DiGraph] = []
+        self.utils = WorkflowUtils()
+
+        self._node_registry: dict[str, type[NodeModel]] = {"read_csv": ReadCSV}
+
+        self._nodes_instance_cache: dict[str, NodeModel] = {}
+
+    def _get_node_instance(self, node_name: str) -> NodeModel:
+        if node_name not in self._nodes_instance_cache:
+            print(
+                "-" * 10,
+                f" Initializing new instance of {node_name} ",
+                "-" * 10,
+                end="\n",
+            )
+            node_instance = self._node_registry[node_name]()
+            self._nodes_instance_cache[node_name] = node_instance  # Instantiate ONCE
+
+        return self._nodes_instance_cache[node_name]
 
     # def initialize_data_processor(self):
     #     if self._data_processor == None:
@@ -35,7 +60,12 @@ class Workflow:
     def create_graph(self, nodes: list[WorkflowNode], edges: list[WorkflowEdge]):
         G = nx.DiGraph()
         for node in nodes:
-            G.add_node(node.id, type=node.type, data=node.data, category=node.data.get("category") if node.data else None)
+            G.add_node(
+                node.id,
+                type=node.type,
+                data=node.data,
+                category=node.data.get("category") if node.data else None,
+            )
         for edge in edges:
             G.add_edge(edge.source, edge.target)
 
@@ -60,37 +90,45 @@ class Workflow:
         network = self._network
         order = nx.topological_sort(network)
 
-        print('---------Execution----------')
+        print("---------Execution----------")
         for node_id in order:
-            node_category = network.nodes[node_id]['category']
+            node_category = network.nodes[node_id]["category"]
             incoming_nodes = list(network.predecessors(node_id))
 
-            print('-----incoming nodes-----', incoming_nodes)
+            print("-----incoming nodes-----", incoming_nodes)
 
             if node_category == NodeCategory.DATALOADER_DATA_LOAD_SKLEARN:
-                network.nodes[node_id]['exec-result'] = DataLoader.load_sklearn_sample_dateset()
+                network.nodes[node_id]["exec-result"] = (
+                    DataLoader.load_sklearn_sample_dateset()
+                )
             elif node_category == NodeCategory.DATALOADER_SHOW_DATA_INFO:
-                data_set: DataSet = network.nodes[incoming_nodes[0]]['exec-result']
+                data_set: DataSet = network.nodes[incoming_nodes[0]]["exec-result"]
                 print(DataLoader.show_dataframe_info(data_set.data))
             elif node_category == NodeCategory.SQL_GET_DB_INSTANCE:
-                network.nodes[node_id]['exec-result'] = RDB.get_instance(str(CONNECTION_STRING))
+                network.nodes[node_id]["exec-result"] = RDB.get_instance(
+                    str(CONNECTION_STRING)
+                )
             elif node_category == NodeCategory.SQL_SELECT_ON_TABLE:
                 # engine = network.nodes[incoming_nodes[0]]['exec-result']
                 engine = RDB.get_instance(str(CONNECTION_STRING))
 
-                table_name = network.nodes[node_id]['data'].get("tableName")
-                columns = network.nodes[node_id]['data'].get("columns", [])
+                table_name = network.nodes[node_id]["data"].get("tableName")
+                columns = network.nodes[node_id]["data"].get("columns", [])
                 metadata = sa.MetaData()
 
                 if table_name:
-                    query = RDB.select(table_name, *columns, engine=engine, metadata=metadata)
-                    network.nodes[node_id]['exec-result'] = query
+                    query = RDB.select(
+                        table_name, *columns, engine=engine, metadata=metadata
+                    )
+                    network.nodes[node_id]["exec-result"] = query
                     print(query)
                     print(table_name, columns)
 
                     RDB.pretty_print(RDB.execute(query, engine))
             elif node_category == NodeCategory.DATALOADER_DATA_LOAD_CSV:
-                network.nodes[node_id]['exec-result'] = DataLoader.read_csv()
-
+                context = {"file_name": CSV_FILE_LOCATION}
+                network.nodes[node_id]["exec-result"] = self._get_node_instance(
+                    "read_csv"
+                ).execute(context=context, utils=self.utils)
 
         # print('-------Run Info-------\n', nx.get_node_attributes(network, 'exec-result'))
