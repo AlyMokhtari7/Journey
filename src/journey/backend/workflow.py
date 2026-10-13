@@ -4,7 +4,6 @@ import networkx as nx
 import sqlalchemy as sa
 from dotenv import load_dotenv
 
-from journey.backend.dataLoader import DataLoader
 from journey.backend.intermediate_artifacts import (
     DataSet,
     NodeCategory,
@@ -14,20 +13,23 @@ from journey.backend.intermediate_artifacts import (
 from journey.backend.RDB import RDB
 from journey.sdk.base import NodeModel
 from journey.sdk.utils import NodeUtils
-from modules.CSV.ReadCSV import ReadCSV
+from modules.CoreModules import ShowDataFrameInfo
+from modules.csv import ReadCSV
+from modules.database import SelectData
+from modules.sklearn import SklearnDataSets
 
 # --- Env Data ---
 load_dotenv()
 CONNECTION_STRING = os.getenv("CONNECTION_STRING")
 CSV_FILE_LOCATION = os.getenv("CSV_FILE_LOCATION")
 
-class WorkflowUtils(NodeUtils):
 
+class WorkflowUtils(NodeUtils):
     def log(self, log_msg, node_name) -> None:
-        print(f'LOG/{node_name}/{log_msg}')
+        print(f"LOG/{node_name}/{log_msg}")
 
     def set_error(self, err_msg, node_name) -> None:
-        print(f'ERR/{node_name}/{err_msg}')
+        print(f"ERR/{node_name}/{err_msg}")
 
 
 class Workflow:
@@ -36,7 +38,12 @@ class Workflow:
         self._network = nx.DiGraph()
         self.utils = WorkflowUtils()
 
-        self._node_registry: dict[str, type[NodeModel]] = {"read_csv": ReadCSV}
+        self._node_registry: dict[str, type[NodeModel]] = {
+            "read_csv": ReadCSV,
+            "select_on_DB": SelectData,
+            "show_dataFrame_info": ShowDataFrameInfo,
+            "load_sklearn_sample_dateset": SklearnDataSets,
+        }
 
         self._nodes_instance_cache: dict[str, NodeModel] = {}
 
@@ -52,10 +59,6 @@ class Workflow:
             self._nodes_instance_cache[node_name] = node_instance  # Instantiate ONCE
 
         return self._nodes_instance_cache[node_name]
-
-    # def initialize_data_processor(self):
-    #     if self._data_processor == None:
-    #         self._data_processor = DataProcessor(self._data_loader._data_set)
 
     def create_graph(self, nodes: list[WorkflowNode], edges: list[WorkflowEdge]):
         G = nx.DiGraph()
@@ -99,15 +102,12 @@ class Workflow:
 
             if node_category == NodeCategory.DATALOADER_DATA_LOAD_SKLEARN:
                 network.nodes[node_id]["exec-result"] = (
-                    DataLoader.load_sklearn_sample_dateset()
+                    self._get_node_instance('load_sklearn_sample_dateset').execute(context={}, utils=self.utils)
                 )
             elif node_category == NodeCategory.DATALOADER_SHOW_DATA_INFO:
-                data_set: DataSet = network.nodes[incoming_nodes[0]]["exec-result"]
-                print(DataLoader.show_dataframe_info(data_set.data))
-            elif node_category == NodeCategory.SQL_GET_DB_INSTANCE:
-                network.nodes[node_id]["exec-result"] = RDB.get_instance(
-                    str(CONNECTION_STRING)
-                )
+                data_frame: DataSet = network.nodes[incoming_nodes[0]]["exec-result"]
+                context = {"data_frame": data_frame}
+                network.nodes[node_id]["exec-result"] = self._get_node_instance('show_dataFrame_info').execute(context=context, utils=self.utils)
             elif node_category == NodeCategory.SQL_SELECT_ON_TABLE:
                 # engine = network.nodes[incoming_nodes[0]]['exec-result']
                 engine = RDB.get_instance(str(CONNECTION_STRING))
@@ -116,15 +116,15 @@ class Workflow:
                 columns = network.nodes[node_id]["data"].get("columns", [])
                 metadata = sa.MetaData()
 
-                if table_name:
-                    query = RDB.select(
-                        table_name, *columns, engine=engine, metadata=metadata
-                    )
-                    network.nodes[node_id]["exec-result"] = query
-                    print(query)
-                    print(table_name, columns)
-
-                    RDB.pretty_print(RDB.execute(query, engine))
+                context = {
+                    "sa_engine": engine,
+                    "sa_metadata": metadata,
+                    "table_name": table_name,
+                    "columns": columns,
+                }
+                network.nodes[node_id]["exec-result"] = self._get_node_instance(
+                    "select_on_DB"
+                ).execute(context=context, utils=self.utils)
             elif node_category == NodeCategory.DATALOADER_DATA_LOAD_CSV:
                 context = {"file_name": CSV_FILE_LOCATION}
                 network.nodes[node_id]["exec-result"] = self._get_node_instance(
