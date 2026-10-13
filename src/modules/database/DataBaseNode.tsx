@@ -1,4 +1,4 @@
-import { useReactFlow } from '@xyflow/react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { useEffect, useState } from 'react';
 
 async function get_table_names() : Promise<Array<string>> {
@@ -24,15 +24,6 @@ async function get_table_column_names(table_name: string): Promise<Array<string>
     const res = await response.json();
     return res.column_names;
 }
-
-// async function load_data(table_name: string, columns: Array<string>): Promise<undefined> {
-//     await fetch(`http://localhost:8000/SQL/execute_query/${table_name}/${columns}`, {
-//         method: 'GET',
-//         headers: {
-//             'Content-Type': 'application/json'
-//         }
-//     });
-// }
 
 export default function DataBaseNode({id}: {id: string}) {
     const [tables, setTables] = useState<string[]>([]);
@@ -95,17 +86,13 @@ export default function DataBaseNode({id}: {id: string}) {
         </>
     );
 
-    // function handleLoadData() {
-    //     load_data(selectedTable, selectedColumns)
-    // }
-
     return (
         <div className='bg-white rounded-md border-[0.5] p-2'>
             {tables_selection}
             <br/>
             {columns_selection}
-            <br/>
-            {/*<button onClick={handleLoadData}>Load Data</button>*/}
+            <br />
+            <Handle type="source" position={Position.Bottom} />
         </div>
     );
 }

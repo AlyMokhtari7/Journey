@@ -23,4 +23,5 @@ export type nodeCategory = "DataLoader/data" |
     "DataLoader/data/SkLearn" |
 
     "SQL/DB/GetInstance" |
-    "SQL/Table/Select"
+    "SQL/Table/Select" |
+    "SQL/ExecuteQuery"

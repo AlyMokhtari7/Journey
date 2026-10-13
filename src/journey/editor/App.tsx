@@ -2,7 +2,7 @@ import '@xyflow/react/dist/style.css';
 import LoadData from './components/editor_nodes/LoadDataNode';
 import Editor from './Editor';
 import type { nodeType, edgeType } from './types';
-import DataBaseNode from './components/editor_nodes/DataBaseNode';
+import DataBaseNode from '../../modules/database/DataBaseNode';
 
 const nodeTypes = {
   loadData: LoadData,

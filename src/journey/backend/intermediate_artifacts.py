@@ -36,3 +36,4 @@ class NodeCategory(str, enum.Enum):
 
     SQL_GET_DB_INSTANCE ="SQL/DB/GetInstance"
     SQL_SELECT_ON_TABLE ="SQL/Table/Select"
+    SQL_EXECUTE_QUERY ="SQL/ExecuteQuery"

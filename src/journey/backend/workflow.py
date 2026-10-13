@@ -15,7 +15,7 @@ from journey.sdk.base import NodeModel
 from journey.sdk.utils import NodeUtils
 from modules.CoreModules import ShowDataFrameInfo
 from modules.csv import ReadCSV
-from modules.database import SelectData
+from modules.database import ExecuteQuery, SelectData
 from modules.sklearn import SklearnDataSets
 
 # --- Env Data ---
@@ -43,6 +43,7 @@ class Workflow:
             "select_on_DB": SelectData,
             "show_dataFrame_info": ShowDataFrameInfo,
             "load_sklearn_sample_dateset": SklearnDataSets,
+            "execute_query": ExecuteQuery,
         }
 
         self._nodes_instance_cache: dict[str, NodeModel] = {}
@@ -125,6 +126,14 @@ class Workflow:
                 network.nodes[node_id]["exec-result"] = self._get_node_instance(
                     "select_on_DB"
                 ).execute(context=context, utils=self.utils)
+
+            elif node_category == NodeCategory.SQL_EXECUTE_QUERY:
+                query = network.nodes[incoming_nodes[0]]['exec-result']
+                engine = RDB.get_instance(str(CONNECTION_STRING))
+                
+                network.nodes[node_id]["exec-result"] = self._get_node_instance(
+                    "execute_query"
+                ).execute(context={"query": query, "sa_engine": engine}, utils=self.utils)
             elif node_category == NodeCategory.DATALOADER_DATA_LOAD_CSV:
                 context = {"file_name": CSV_FILE_LOCATION}
                 network.nodes[node_id]["exec-result"] = self._get_node_instance(
