@@ -1,7 +1,15 @@
-import { useState, useCallback } from 'react';
-import { ReactFlow, applyNodeChanges, applyEdgeChanges, Background, Controls, addEdge, type NodeChange, type EdgeChange } from '@xyflow/react';
-import type { nodeType, edgeType, nodeCategory } from './types';
-
+import { useState, useCallback } from "react";
+import {
+  ReactFlow,
+  applyNodeChanges,
+  applyEdgeChanges,
+  Background,
+  Controls,
+  addEdge,
+  type NodeChange,
+  type EdgeChange,
+} from "@xyflow/react";
+import type { nodeType, edgeType, nodeCategory } from "./types";
 
 async function send_workflow(nodes: Array<nodeType>, edges: Array<edgeType>) {
   const response = await fetch("http://127.0.0.1:8000/workflows/", {
@@ -15,33 +23,49 @@ async function send_workflow(nodes: Array<nodeType>, edges: Array<edgeType>) {
     }),
   });
 
-  console.log("sending workflow", JSON.stringify({
-    nodes: nodes,
-    edges: edges,
-  }))
+  console.log(
+    "sending workflow",
+    JSON.stringify({
+      nodes: nodes,
+      edges: edges,
+    }),
+  );
 
   const res = await response.json();
-  console.log(res)
+  console.log(res);
 }
 
-export default function App({ nodeTypes, initialNodes, initialEdges }: { nodeTypes: any, initialNodes: Array<nodeType>, initialEdges: Array<edgeType> }) {
-  const [nodes, setNodes] = useState(initialNodes)
-  const [edges, setEdges] = useState(initialEdges)
+export default function App({
+  nodeTypes,
+  initialNodes,
+  initialEdges,
+}: {
+  nodeTypes: any;
+  initialNodes: Array<nodeType>;
+  initialEdges: Array<edgeType>;
+}) {
+  const [nodes, setNodes] = useState(initialNodes);
+  const [edges, setEdges] = useState(initialEdges);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<nodeType>[]) =>
-      setNodes((nodesSnapshot) => applyNodeChanges<nodeType>(changes, nodesSnapshot)),
+      setNodes((nodesSnapshot) =>
+        applyNodeChanges<nodeType>(changes, nodesSnapshot),
+      ),
     [],
   );
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange<edgeType>[]) =>
-      setEdges((edgesSnapshot) => applyEdgeChanges<edgeType>(changes, edgesSnapshot)),
+      setEdges((edgesSnapshot) =>
+        applyEdgeChanges<edgeType>(changes, edgesSnapshot),
+      ),
     [],
   );
 
   const onConnect = useCallback(
-    (params: any) => setEdges((edgesSnapshot: any) => addEdge(params, edgesSnapshot)),
+    (params: any) =>
+      setEdges((edgesSnapshot: any) => addEdge(params, edgesSnapshot)),
     [],
   );
 
@@ -50,7 +74,7 @@ export default function App({ nodeTypes, initialNodes, initialEdges }: { nodeTyp
       label: string;
       category: nodeCategory;
     },
-    type: any = "input"
+    type: any = "input",
   ) {
     const id = crypto.randomUUID();
 
@@ -60,8 +84,8 @@ export default function App({ nodeTypes, initialNodes, initialEdges }: { nodeTyp
         id,
         position: { x: 10, y: 10 },
         type,
-        data
-      }
+        data,
+      },
     ]);
   }
 
@@ -69,21 +93,59 @@ export default function App({ nodeTypes, initialNodes, initialEdges }: { nodeTyp
   //   setNodes(nodes.map(node => node.id === id ? {...node, data} : node));
   // }
 
+  const nodes_registery: Record<
+    string,
+    { data: { label: string; category: nodeCategory }; type: string }
+  > = {
+    // what is Record ?
+    CSV: {
+      data: { label: "new CSV node", category: "DataLoader/data/loadCSV" },
+      type: "",
+    },
+    DB: {
+      data: { label: "new DB node", category: "SQL/Table/Select" },
+      type: "dataBaseNode",
+    },
+    DBInstance: {
+      data: { label: "new DB instance node", category: "SQL/DB/GetInstance" },
+      type: "",
+    },
+    ExecuteQuery: {
+      data: { label: "new Execute Query node", category: "SQL/ExecuteQuery" },
+      type: "",
+    },
+    SklearnDS: {
+      data: {
+        label: "new Sklearn DS node",
+        category: "DataLoader/data/SkLearn",
+      },
+      type: "",
+    },
+    ShowDataInfo: {
+      data: {
+        label: "new Show Data Info node",
+        category: "DataLoader/show_data_info",
+      },
+      type: "output",
+    },
+  };
+
   return (
     <>
-      <div className='flex'>
-        <div className='bg-amber-100' style={{ width: '30vw', height: '100vh' }}>
-          <div onClick={() => createNode({ label: "new CSV node", category: "DataLoader/data/loadCSV" })}>Add CSV Data</div>
-          <div onClick={() => createNode({ label: "new DB instance node", category: "SQL/DB/GetInstance" })}>Add DB Instance</div>
-          <div onClick={() => createNode({ label: "new DB node", category: "SQL/Table/Select" }, "dataBaseNode")}>Select on Database</div>
-          <div onClick={() => createNode({ label: "new Execute Query node", category: "SQL/ExecuteQuery" }, '')}>Execute Query</div>
-          <div onClick={() => createNode({ label: "new Sklearn DS node", category: "DataLoader/data/SkLearn" })}>Add sklearn DS</div>
-          <div onClick={() => createNode({ label: "new Show Data Info node", category: "DataLoader/show_data_info" }, "output")}>Add Show Data Info</div>
-          {/*<div onClick={() => createNode({ label: "new Aggregate Data node", category: "DataLoader/aggregate_data" }, "")}>Add Aggregate Data</div>*/}
+      <div className="flex">
+        <div
+          className="bg-amber-100"
+          style={{ width: "30vw", height: "100vh" }}
+        >
+          {Object.entries(nodes_registery).map(([key, value]) => (
+            <div key={key} onClick={() => createNode(value.data, value.type)}>
+              {key}
+            </div>
+          ))}
           <hr />
           <div onClick={() => send_workflow(nodes, edges)}>Save</div>
         </div>
-        <div style={{ width: '70vw', height: '100vh' }}>
+        <div style={{ width: "70vw", height: "100vh" }}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -91,7 +153,7 @@ export default function App({ nodeTypes, initialNodes, initialEdges }: { nodeTyp
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             nodeTypes={nodeTypes}
-            colorMode='dark'
+            colorMode="dark"
             fitView
           >
             <Controls />
