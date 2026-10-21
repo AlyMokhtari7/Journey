@@ -47,14 +47,15 @@ export default function App({
 }) {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
-  const [showPanel, setShowPanel] = useState(false);
+  const [showPanel, setShowPanel] = useState(true);
   const [panel_data, setPanelData] = useState(
     "This is the content of the panel.",
   );
   const [showDatasetProfilePanel, setShowDatasetProfilePanel] = useState(false);
   const [datasetProfilePanelData, setDatasetProfilePanelData] = useState<
     string | DataSetProfile
-  >("");
+    >("");
+  const [isNodeMenuOpen, setIsNodeMenuOpen] = useState(false);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<nodeType>[]) =>
@@ -251,41 +252,70 @@ export default function App({
         colorMode="dark"
         fitView
       >
-        <Controls />
+        {/*<Controls />*/}
       </ReactFlow>
     </div>
   );
 
   const panel = showPanel && (
-    <div className="h-full w-full overflow-auto bg-white p-4">
+    <div className="h-full w-full overflow-auto bg-[#313337] text-[#bfbdb6] p-4">
       <h3>Panel Content</h3>
       <p>{panel_data}</p>
     </div>
   );
 
   const datasetProfilePanel = showDatasetProfilePanel && (
-    <div className="h-full w-full overflow-auto bg-white p-4">
+    <div className="h-full w-full overflow-auto bg-[#313337] text-[#bfbdb6] p-4">
       <h3>Dataset Profile</h3>
       {panelContent}
     </div>
   );
 
+  const nodeSelector = (
+    <span className="relative">
+      <button
+        className="border border-[#3f4043] px-5 py-2 text-sm text-[#bfbdb6] hover:bg-gray-950"
+        onClick={() => setIsNodeMenuOpen((open) => !open)}
+      >
+        + Add Node
+      </button>
 
+      {isNodeMenuOpen && (
+        <div className="absolute left-0 bottom-full z-50 mt-1 mb-5 min-w-40 border border-[#3f4043] p-1 shadow-lg">
+          {Object.entries(nodes_registery).map(([key, value]) => (
+            <button
+              key={key}
+              className="block w-full px-3 py-2 text-left text-sm text-[#bfbdb6] hover:bg-gray-950"
+              onClick={() => {
+                createNode(value.data, value.type);
+                setIsNodeMenuOpen(false);
+              }}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
+  );
 
   return (
-    <div className="h-screen w-screen bg-[#1f1f1f]">
-      <div className="flex h-full w-full flex-col bg-white">
+    <div className="relative h-screen w-screen overflow-hidden">
+      {/* Add Node button */}
+      <div className="absolute left-5 bottom-5 z-50">
+        {nodeSelector}
+      </div>
+
+      <div className="flex h-full w-full flex-col bg-[#313337]">
         {/* Navbar */}
-        <header className="h-14 shrink-0 border-b border-[#a0a0a0]" />
+        <header className="h-14 shrink-0 border-b border-[#3f4043]" />
 
         {/* Main workspace */}
         <main className="flex min-h-0 flex-1">
-          {/* Left panel: React Flow */}
-          <section className="h-full w-1/2 min-w-0 border-r border-[#a0a0a0]">
+          <section className="h-full w-1/2 min-w-0 border-r border-[#3f4043]">
             {reactFlow}
           </section>
 
-          {/* Right panel: Dataset profile or other content */}
           <section className="h-full w-1/2 min-w-0 overflow-auto">
             {showDatasetProfilePanel
               ? datasetProfilePanel
