@@ -1,23 +1,35 @@
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
 
 import pandas as pd
+from fontTools.misc.plistlib import Data
+from pygments.unistring import Sc
 
 from journey.backend.intermediate_artifacts import DataBundle, DataSet
 from journey.sdk.base import NodeModel
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 
+type AnyScaler = preprocessing.StandardScaler | preprocessing.RobustScaler | preprocessing.MinMaxScaler
+
+class BaseResult(TypedDict):
+    res: DataSet | DataBundle
+
+
+class ScaleResult(BaseResult):
+    scaler: AnyScaler
+    target_scaler: AnyScaler | None
+
+class EncodeResult(BaseResult):
+    encoder: preprocessing.OrdinalEncoder
+
 
 class Preprocessing:
 
     class ScaleData(NodeModel):
 
-        type AnyScaler = preprocessing.StandardScaler | preprocessing.RobustScaler | preprocessing.MinMaxScaler
-
-
-        def _scale_data(self, data_bundle: DataBundle,
+        def _scale_dataBundle(self, data_bundle: DataBundle,
             method: str = "standard", scale_target: bool = False
-        ) -> tuple[DataBundle, AnyScaler, AnyScaler | None]:
+        ) -> ScaleResult:
             """
             Scales the data in the DataFrame using the specified scaling method.
 
@@ -67,13 +79,54 @@ class Preprocessing:
             if scale_target:
                 _target_scaler = Scalers["target"]
 
-            return data_bundle, _scaler, _target_scaler if scale_target else None
+            return ScaleResult(res=data_bundle, scaler=_scaler, target_scaler=_target_scaler if scale_target else None)
 
-        def execute(self, context: dict[str, Any], utils) -> tuple[DataBundle, AnyScaler, AnyScaler | None]:
-            data_bundle = context['data_bundle']
-            method = context['method']
-            scale_target = context['scale_target']
-            exec_res = self._scale_data(data_bundle=data_bundle, method=method, scale_target=scale_target)
+
+        def _scale_dataSet(self, data_set: DataSet,
+            method: str = "standard", scale_target: bool = False
+        ) -> ScaleResult:
+            """
+            Scales a DataSet using the specified method and returns a ScaleResult.
+            """
+            Scaler_methods = {
+                "standard": preprocessing.StandardScaler,
+                "minmax": preprocessing.MinMaxScaler,
+                "robust": preprocessing.RobustScaler,
+            }
+
+            if method not in Scaler_methods:
+                raise ValueError(
+                    "Invalid scaling method. Choose 'standard', 'minmax', or 'robust'."
+                )
+
+            # Holds all the scalers, including the target scaler if needed
+            Scalers = {"features": Scaler_methods[method]()}
+
+            data = data_set.data
+            _scaler = Scalers["features"]
+            _target_scaler = None
+
+            data_columns = data.columns
+            data_index = data.index
+            data = _scaler.fit_transform(data)
+
+            data = pd.DataFrame(
+                data,
+                columns=data_columns,
+                index=data_index,
+            )
+
+            return ScaleResult(res=DataSet(data=data), scaler=_scaler, target_scaler=None)
+
+
+        def execute(self, context: dict[str, Any], utils) -> ScaleResult:
+            data: DataBundle | DataSet = context['data_bundle']
+            method: Literal["standard", "robust", "minmax"] = context['method']
+            scale_target: bool = context['scale_target']
+            if isinstance(data, DataSet):
+                exec_res: ScaleResult = self._scale_dataSet(data_set=data, method=method, scale_target=scale_target)
+            elif isinstance(data, DataBundle):
+                exec_res: ScaleResult = self._scale_dataBundle(data_bundle=data, method=method, scale_target=scale_target)
             utils.log(log_msg='Finished_Scaling_Data', node_name='SkLearn')
             return exec_res
 
@@ -103,17 +156,17 @@ class Preprocessing:
             return databundle
 
 
-        def execute(self, context: dict[str, Any], utils) -> DataBundle:
+        def execute(self, context: dict[str, Any], utils) -> BaseResult:
             data_bundle = context['data_bundle']
             norm = context['norm']
             normalize_target = context['normalize_target']
             exec_res = self._normalize_vectors(databundle=data_bundle, norm=norm, normalize_target=normalize_target)
             utils.log(log_msg='Finished_Normalizing_Data', node_name='SkLearn')
-            return exec_res
+            return BaseResult(res=exec_res)
 
     class EncodeDataFeatures(NodeModel):
 
-        def _encode_data_features(self, databundle: DataBundle) -> tuple[DataBundle, preprocessing.OrdinalEncoder]:
+        def _encode_data_features(self, databundle: DataBundle) -> EncodeResult:
             enc = preprocessing.OrdinalEncoder(
                 handle_unknown="use_encoded_value",
                 unknown_value=-1,
@@ -140,10 +193,10 @@ class Preprocessing:
 
             _encoder = enc
 
-            return databundle, _encoder
+            return EncodeResult(res=databundle, encoder=_encoder)
 
 
-        def execute(self, context: dict[str, Any], utils) -> tuple[DataBundle, preprocessing.OrdinalEncoder]:
+        def execute(self, context: dict[str, Any], utils) -> EncodeResult:
             data_bundle = context['data_bundle']
             exec_res = self._encode_data_features(databundle=data_bundle)
             utils.log(log_msg='Finished_Encoding_Data_Features', node_name='SkLearn')
@@ -151,28 +204,45 @@ class Preprocessing:
 
     class DropMissingValues(NodeModel):
 
-        def _drop_columns_with_missing_values(self, df: pd.DataFrame) -> DataSet:
+        def _drop_columns_with_missing_values_from_dataset(self, data: DataSet) -> BaseResult:
             """
             Drops columns from the DataFrame that contain any missing values.
 
             Args:
-                df (pd.DataFrame): The DataFrame to process.
+                data (DataSet): The DataSet to process.
 
             Returns:
-                pd.DataFrame: A DataFrame with columns containing missing values dropped.
+                BaseResult: A DataSet with columns containing missing values dropped.
             """
-            return DataSet(df.dropna(axis=1))
+            return BaseResult(res=DataSet(data.data.dropna(axis=0)))
 
 
-        def execute(self, context: dict[str, Any], utils) -> DataSet:
+        def _drop_columns_with_missing_values_from_databundle(self, data: DataBundle) -> BaseResult:
+            return BaseResult(
+                res=DataBundle(
+                    features={
+                        "_X_train": data.features["_X_train"].dropna(axis=0),
+                        "_X_test": data.features["_X_test"].dropna(axis=0),
+                    },
+                    target={
+                        "_y_train": data.target["_y_train"].dropna(),
+                        "_y_test": data.target["_y_test"].dropna(),
+                    },
+                )
+            )
+
+        def execute(self, context: dict[str, Any], utils) -> BaseResult:
             data_frame = context['data_frame']
-            exec_res = self._drop_columns_with_missing_values(df=data_frame)
+            if isinstance(data_frame, DataBundle):
+                exec_res = self._drop_columns_with_missing_values_from_databundle(data_frame)
+            else:
+                exec_res = self._drop_columns_with_missing_values_from_dataset(data_frame)
             utils.log(log_msg='Finished_Dropping_Missing_Values', node_name='SkLearn')
             return exec_res
 
     class ImputeData(NodeModel):
 
-        def _imputation(self, df: pd.DataFrame, strategy: str = "mean") -> DataSet:
+        def _imputation(self, df: pd.DataFrame, strategy: str = "mean") -> BaseResult:
             """
             Imputes missing values in the DataFrame using the specified strategy.
 
@@ -181,21 +251,21 @@ class Preprocessing:
                 strategy (str): The imputation strategy ('mean', 'median', or 'mode').
 
             Returns:
-                pd.DataFrame: A DataFrame with missing values imputed.
+                BaseResult: A DataSet with missing values imputed.
             """
             if strategy == "mean":
-                return DataSet(df.fillna(df.mean()))
+                return BaseResult(res=DataSet(df.fillna(df.mean())))
             elif strategy == "median":
-                return DataSet(df.fillna(df.median()))
+                return BaseResult(res=DataSet(df.fillna(df.median())))
             elif strategy == "mode":
-                return DataSet(df.fillna(df.mode().iloc[0]))
+                return BaseResult(res=DataSet(df.fillna(df.mode().iloc[0])))
             else:
                 raise ValueError(
                     "Invalid imputation strategy. Choose 'mean', 'median', or 'mode'."
                 )
 
 
-        def execute(self, context: dict[str, Any], utils) -> DataSet:
+        def execute(self, context: dict[str, Any], utils) -> BaseResult:
             data_frame = context['data_frame']
             exec_res = self._imputation(df=data_frame)
             utils.log(log_msg='Finished_Encoding_Data_Features', node_name='SkLearn')
@@ -209,18 +279,18 @@ class DataSplitter(NodeModel):
         target_column: str = "",
         test_size: float = 0.2,
         random_state: int = 42,
-    ):
+    ) -> BaseResult:
         """
-        Splits the DataFrame into training and testing sets.
+        Splits the DataSet into training and testing sets.
 
         Args:
-            df (pd.DataFrame): The DataFrame to split.
+            dataset (DataSet): The DataSet to split.
             target_column (str): The name of the target column.
             test_size (float): The proportion of the dataset to include in the test split.
             random_state (int): Random seed for reproducibility.
 
         Returns:
-            tuple: A tuple containing the training and testing sets (X_train, X_test, y_train, y_test).
+            BaseResult: A DataBundle containing the training and testing sets (X_train, X_test, y_train, y_test).
         """
         df = dataset.data
 
@@ -239,27 +309,27 @@ class DataSplitter(NodeModel):
 
         _X_train, _X_test, _y_train, _y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
 
-        return DataBundle({"_X_train": _X_train, "_X_test": _X_test}, {"_y_train": _y_train, "_y_test": _y_test})
+        return BaseResult(res=DataBundle({"_X_train": _X_train, "_X_test": _X_test}, {"_y_train": _y_train, "_y_test": _y_test}))
 
-    def execute(self, context: dict[str, Any], utils) -> DataBundle:
+    def execute(self, context: dict[str, Any], utils) -> BaseResult:
         data_set = context['data_set']
         random_state = context['random_state']
         target_column = context['target_column']
         test_size = context['test_size']
         exec_res = self._split_data(dataset=data_set, random_state=random_state, target_column=target_column, test_size=test_size)
-        utils.log(log_msg='Finished_Encoding_Data_Features', node_name='SkLearn')
+        utils.log(log_msg='Finished_Splitting_Data_Features', node_name='SkLearn')
         return exec_res
 
 class SklearnDataSets(NodeModel):
 
-    def _load_sklearn_sample_dateset(self) -> DataSet:
+    def _load_sklearn_sample_dateset(self) -> BaseResult:
         # for now it works with wine DataSet
         from sklearn.datasets import load_wine
 
         df = load_wine(return_X_y=False, as_frame=True)
-        return DataSet(df.frame) # type: ignore
+        return BaseResult(res=DataSet(df.frame))
 
-    def execute(self, context: dict[str, Any], utils) -> DataSet:
+    def execute(self, context: dict[str, Any], utils) -> BaseResult:
         exec_res = self._load_sklearn_sample_dateset()
-        utils.log(log_msg='Finished_Encoding_Data_Features', node_name='SkLearn')
+        utils.log(log_msg='Finished_Loading_Data_Features', node_name='SkLearn')
         return exec_res

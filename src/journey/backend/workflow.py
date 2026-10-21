@@ -1,14 +1,21 @@
+import typing
+from joblib.parallel import method
 import os
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import networkx as nx
+import numpy as np
+import pandas as pd
 import sqlalchemy as sa
 from dotenv import load_dotenv
 
 from journey.backend.intermediate_artifacts import (
     DataSet,
+    DataSetProfile,
     NodeCategory,
     WorkflowEdge,
-    WorkflowNode,
+    WorkflowNode, ScaleContext, SplitDataContext,
 )
 from journey.backend.RDB import RDB
 from journey.sdk.base import NodeModel
@@ -16,13 +23,17 @@ from journey.sdk.utils import NodeUtils
 from modules.CoreModules import ShowDataFrameInfo
 from modules.csv import ReadCSV
 from modules.database import ExecuteQuery, SelectData
-from modules.sklearn import SklearnDataSets
+from modules.sklearn import DataSplitter, Preprocessing, SklearnDataSets
 
 # --- Env Data ---
 load_dotenv()
 CONNECTION_STRING = os.getenv("CONNECTION_STRING")
 CSV_FILE_LOCATION = os.getenv("CSV_FILE_LOCATION")
 
+EventSender = Callable[
+    [str, dict[str, Any]],
+    Awaitable[None],
+]
 
 class WorkflowUtils(NodeUtils):
     def log(self, log_msg, node_name) -> None:
@@ -44,6 +55,12 @@ class Workflow:
             "show_dataFrame_info": ShowDataFrameInfo,
             "load_sklearn_sample_dateset": SklearnDataSets,
             "execute_query": ExecuteQuery,
+            "sklearn_scale": Preprocessing.ScaleData,
+            "sklearn_normalize": Preprocessing.NormalizeData,
+            "sklearn_encode": Preprocessing.EncodeDataFeatures,
+            "sklearn_drop_missing_values": Preprocessing.DropMissingValues,
+            "sklearn_impute": Preprocessing.ImputeData,
+            "sklearn_datasplit": DataSplitter,
         }
 
         self._nodes_instance_cache: dict[str, NodeModel] = {}
@@ -90,6 +107,77 @@ class Workflow:
         # nx.draw(self._network, with_labels=False)
         # plt.show()
 
+    def profile_dataframe(self, df: pd.DataFrame) -> DataSetProfile:
+        def to_python(value: Any) -> Any:
+            if value is None or pd.isna(value):
+                return None
+
+            if isinstance(value, np.generic):
+                return value.item()
+
+            return value
+
+        profile: dict[str, Any] = {
+            "row_count": len(df),
+            "column_count": len(df.columns),
+            "columns": [],
+        }
+
+        for column in df.columns:
+            name = column
+            series = df[column]
+            missing = int(series.isna().sum())
+            distinct = int(series.nunique())
+
+            column_info: dict[str, Any] = {
+                "name": name,
+                "dtype": str(series.dtype),
+                "distinct": distinct,
+                "missing": missing,
+                "missing_percent": (
+                    round(missing / len(df) * 100, 2)
+                    if len(df) > 0
+                    else 0.0
+                ),
+                "non_missing": int(series.count()),
+            }
+
+            # Numeric statistics
+            if pd.api.types.is_numeric_dtype(series):
+                column_info.update({
+                    "numeric_summary": {
+                        "min": to_python(series.min()),
+                        "max": to_python(series.max()),
+                        "mean": to_python(series.mean()),
+                        "median": to_python(series.median()),
+                        "std": to_python(series.std()),
+                    }
+                })
+
+            # Most frequent value
+            if not series.dropna().empty:
+                mode = series.mode()
+                column_info["most_frequent_value"] = (
+                    to_python(mode.iloc[0]) if not mode.empty else None
+                )
+            else:
+                column_info["most_frequent_value"] = None
+
+            profile["columns"].append(column_info)
+
+        return DataSetProfile(**profile)
+
+    def get_exec_res(self, node_id) -> tuple[Any, NodeCategory]:
+        node_type = self._network.nodes[node_id]["category"]
+        exec_res = self._network.nodes[node_id]["exec-result"]
+        print('node_type', node_type)
+        if node_type == NodeCategory.SQL_EXECUTE_QUERY:
+            return self.profile_dataframe(exec_res.data), node_type
+        elif node_type == NodeCategory.SQL_SELECT_ON_TABLE:
+            print('exxxxerrrr', exec_res)
+            return str(exec_res), node_type
+        return None, node_type
+
     def exceution(self):
         network = self._network
         order = nx.topological_sort(network)
@@ -103,10 +191,12 @@ class Workflow:
 
             if node_category == NodeCategory.DATALOADER_DATA_LOAD_SKLEARN:
                 network.nodes[node_id]["exec-result"] = (
-                    self._get_node_instance('load_sklearn_sample_dateset').execute(context={}, utils=self.utils)
+                    self._get_node_instance('load_sklearn_sample_dateset').execute(context={}, utils=self.utils)['res']
                 )
+                print(network.nodes[node_id]["exec-result"])
             elif node_category == NodeCategory.DATALOADER_SHOW_DATA_INFO:
                 data_frame: DataSet = network.nodes[incoming_nodes[0]]["exec-result"]
+                print('--------------data_frame type:', type(data_frame))
                 context = {"data_frame": data_frame}
                 network.nodes[node_id]["exec-result"] = self._get_node_instance('show_dataFrame_info').execute(context=context, utils=self.utils)
             elif node_category == NodeCategory.SQL_SELECT_ON_TABLE:
@@ -130,14 +220,47 @@ class Workflow:
             elif node_category == NodeCategory.SQL_EXECUTE_QUERY:
                 query = network.nodes[incoming_nodes[0]]['exec-result']
                 engine = RDB.get_instance(str(CONNECTION_STRING))
-                
+
                 network.nodes[node_id]["exec-result"] = self._get_node_instance(
                     "execute_query"
                 ).execute(context={"query": query, "sa_engine": engine}, utils=self.utils)
+
             elif node_category == NodeCategory.DATALOADER_DATA_LOAD_CSV:
                 context = {"file_name": CSV_FILE_LOCATION}
                 network.nodes[node_id]["exec-result"] = self._get_node_instance(
                     "read_csv"
                 ).execute(context=context, utils=self.utils)
+            elif node_category == NodeCategory.SKLEARN_SCALE:
+                data_frame = network.nodes[incoming_nodes[0]]['exec-result']
+                context: ScaleContext = {"data_bundle": data_frame, "method": "standard", 'scale_target': False}
+                network.nodes[node_id]["exec-result"] = self._get_node_instance(
+                    "sklearn_scale"
+                ).execute(context=dict(context), utils=self.utils)['res']
+            elif node_category == NodeCategory.SKLEARN_NORMALIZE:
+                data_frame = network.nodes[incoming_nodes[0]]['exec-result']
+                network.nodes[node_id]["exec-result"] = self._get_node_instance(
+                    "sklearn_normalize"
+                ).execute(context={"data_frame": data_frame}, utils=self.utils)['res']
+            elif node_category == NodeCategory.SKLEARN_ENCODE:
+                data_frame = network.nodes[incoming_nodes[0]]['exec-result']
+                network.nodes[node_id]["exec-result"] = self._get_node_instance(
+                    "sklearn_encode"
+                ).execute(context={"data_bundle": data_frame}, utils=self.utils)['res']
+            elif node_category == NodeCategory.SKLEARN_DROP_MISSING_VALUES:
+                data_frame = network.nodes[incoming_nodes[0]]['exec-result']
+                network.nodes[node_id]["exec-result"] = self._get_node_instance(
+                    "sklearn_drop_missing_values"
+                ).execute(context={"data_frame": data_frame}, utils=self.utils)['res']
+            elif node_category == NodeCategory.SKLEARN_IMPUTE:
+                data_frame = network.nodes[incoming_nodes[0]]['exec-result']
+                network.nodes[node_id]["exec-result"] = self._get_node_instance(
+                    "sklearn_impute"
+                ).execute(context={"data_frame": data_frame}, utils=self.utils)['res']
+            elif node_category == NodeCategory.SKLEARN_DATASPLIT:
+                data_frame = network.nodes[incoming_nodes[0]]['exec-result']
+                context: SplitDataContext = {"data_set": data_frame, "target_column": "target", "random_state": 42, "test_size": 0.2}
+                network.nodes[node_id]["exec-result"] = self._get_node_instance(
+                    "sklearn_datasplit"
+                ).execute(context=dict(context), utils=self.utils)['res']
 
         # print('-------Run Info-------\n', nx.get_node_attributes(network, 'exec-result'))

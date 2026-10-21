@@ -3,10 +3,12 @@ import LoadData from './components/editor_nodes/LoadDataNode';
 import Editor from './Editor';
 import type { nodeType, edgeType } from './types';
 import DataBaseNode from '../../modules/database/DataBaseNode';
+import DataBaseExecutionNode from '../../modules/database/DataBaseExecutionNode';
 
 const nodeTypes = {
   loadData: LoadData,
-  dataBaseNode: DataBaseNode
+  dataBaseNode: DataBaseNode,
+  dataBaseExecutionNode: DataBaseExecutionNode,
 };
 
 const initialNodes: Array<nodeType> = [
@@ -40,4 +42,3 @@ export default function App() {
     </>
   );
 }
-

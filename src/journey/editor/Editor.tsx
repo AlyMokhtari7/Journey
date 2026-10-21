@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ReactFlow,
   applyNodeChanges,
@@ -9,7 +9,10 @@ import {
   type NodeChange,
   type EdgeChange,
 } from "@xyflow/react";
-import type { nodeType, edgeType, nodeCategory } from "./types";
+import type { nodeType, edgeType, nodeCategory, DataSetProfile } from "./types";
+import DatasetProfile from "./components/DatasetProfile";
+
+
 
 async function send_workflow(nodes: Array<nodeType>, edges: Array<edgeType>) {
   const response = await fetch("http://127.0.0.1:8000/workflows/", {
@@ -46,6 +49,11 @@ export default function App({
 }) {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
+  const [showPanel, setShowPanel] = useState(true);
+  const [panel_data, setPanelData] = useState('This is the content of the panel.');
+  const [showDatasetProfilePanel, setShowDatasetProfilePanel] = useState(false);
+  const [datasetProfilePanelData, setDatasetProfilePanelData] = useState<string | DataSetProfile>('');
+
 
   const onNodesChange = useCallback(
     (changes: NodeChange<nodeType>[]) =>
@@ -70,10 +78,7 @@ export default function App({
   );
 
   function createNode(
-    data: {
-      label: string;
-      category: nodeCategory;
-    },
+    data: NodesDataType,
     type: any = "input",
   ) {
     const id = crypto.randomUUID();
@@ -89,46 +94,129 @@ export default function App({
     ]);
   }
 
-  // function updateNode(id: string, data: {label: string, category: nodeCategory, params?: any}) {
-  //   setNodes(nodes.map(node => node.id === id ? {...node, data} : node));
-  // }
+    type NodesDataType = {
+        label: string;
+        category: nodeCategory;
+        modify_ui: (mode: "show" | "hide", uiElement: "panel" | "DatasetProfile", data: any) => void;
+    };
 
   const nodes_registery: Record<
     string,
-    { data: { label: string; category: nodeCategory }; type: string }
+    { data: NodesDataType; type: string }
   > = {
     // what is Record ?
     CSV: {
-      data: { label: "new CSV node", category: "DataLoader/data/loadCSV" },
+      data: { label: "load CSV", category: "DataLoader/data/loadCSV", modify_ui: modifyUI},
       type: "",
     },
     DB: {
-      data: { label: "new DB node", category: "SQL/Table/Select" },
+      data: { label: "selection on DB", category: "SQL/Table/Select", modify_ui: modifyUI},
       type: "dataBaseNode",
     },
     DBInstance: {
-      data: { label: "new DB instance node", category: "SQL/DB/GetInstance" },
+      data: { label: "DB instance", category: "SQL/DB/GetInstance", modify_ui: modifyUI},
       type: "",
     },
     ExecuteQuery: {
-      data: { label: "new Execute Query node", category: "SQL/ExecuteQuery" },
-      type: "",
+      data: { label: "Execute Query", category: "SQL/ExecuteQuery", modify_ui: modifyUI},
+      type: "dataBaseExecutionNode",
     },
     SklearnDS: {
       data: {
-        label: "new Sklearn DS node",
+        label: "Sklearn DS",
         category: "DataLoader/data/SkLearn",
+        modify_ui: modifyUI
       },
       type: "",
     },
     ShowDataInfo: {
       data: {
-        label: "new Show Data Info node",
+        label: "Show Data Info",
         category: "DataLoader/show_data_info",
+        modify_ui: modifyUI
       },
       type: "output",
     },
+    SKLearnScale: {
+      data: {
+        label: "Sklearn Scale Data",
+        category: "SkLearn/Scale",
+        modify_ui: modifyUI
+      },
+      type: "",
+    },
+    SKLearnSplit: {
+      data: {
+        label: "Sklearn Split Data",
+        category: "SkLearn/DataSplit",
+        modify_ui: modifyUI
+      },
+      type: "",
+    },
+    SKLearnNormalize: {
+      data: {
+        label: "Sklearn Normalize Data",
+        category: "SkLearn/Normalize",
+        modify_ui: modifyUI
+      },
+      type: "",
+    },
+    SKLearnEncode: {
+      data: {
+        label: "Sklearn Encode Data",
+        category: "SkLearn/Encode",
+        modify_ui: modifyUI
+      },
+      type: "",
+    },
+    SKLearnDropNA: {
+      data: {
+        label: "Sklearn Drop NA",
+        category: "SkLearn/DropMissingValues",
+        modify_ui: modifyUI
+      },
+      type: "",
+    },
+    SKLearnImpute: {
+      data: {
+        label: "Sklearn Impute Data",
+        category: "SkLearn/Impute",
+        modify_ui: modifyUI
+      },
+      type: "",
+    },
   };
+
+  function modifyUI(mode: "show" | "hide", uiElement: "panel" | 'DatasetProfile', data: DataSetProfile | any): void {
+    if (mode === "show") {
+      if (uiElement === "panel") {
+        // show panel
+        setShowPanel(true);
+        setPanelData(data);
+        console.log("show panel");
+      } else if (uiElement === "DatasetProfile") {
+        setDatasetProfilePanelData(data);
+        console.log('data',data)
+        setShowDatasetProfilePanel(true);
+      }
+    } else if (mode === "hide") {
+      if (uiElement === "panel") {
+        // hide panel
+        console.log("hide panel");
+        setShowPanel(false);
+      } else if (uiElement === "DatasetProfile") {
+        setShowDatasetProfilePanel(false);
+      }
+    }
+  }
+
+  let panelContent: React.ReactNode;
+
+  if (typeof datasetProfilePanelData === 'string') {
+    panelContent = <p>{datasetProfilePanelData}</p>;
+  } else {
+    panelContent = <DatasetProfile profile={datasetProfilePanelData} />;
+  }
 
   return (
     <>
@@ -142,6 +230,9 @@ export default function App({
               {key}
             </div>
           ))}
+          <hr />
+          <div onClick={() => modifyUI("show", "panel", null)}>Show Panel</div>
+          <div onClick={() => modifyUI("hide", "panel", null)}>Hide Panel</div>
           <hr />
           <div onClick={() => send_workflow(nodes, edges)}>Save</div>
         </div>
@@ -157,9 +248,24 @@ export default function App({
             fitView
           >
             <Controls />
-            <Background />
           </ReactFlow>
         </div>
+          {showPanel && (
+            <div className="bg-amber-100" style={{ width: "30vw", height: "100vh" }}>
+              <div>
+                <h3>Panel Content</h3>
+              <p>{panel_data}</p>
+              </div>
+            </div>
+        )}
+          {showDatasetProfilePanel && (
+            <div className="bg-amber-100" style={{ width: "30vw", height: "100vh" }}>
+              <div>
+              <h3>Dataset Profile</h3>
+                {panelContent}
+              </div>
+            </div>
+          )}
       </div>
     </>
   );
