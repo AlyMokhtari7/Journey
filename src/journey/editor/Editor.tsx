@@ -201,7 +201,8 @@ export default function App({
           modify_ui: modifyUI,
         },
         type: "",
-      },
+    },
+
     };
 
   function modifyUI(
@@ -249,7 +250,7 @@ export default function App({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
-        colorMode="dark"
+        colorMode="light"
         fitView
       >
         {/*<Controls />*/}
@@ -257,15 +258,17 @@ export default function App({
     </div>
   );
 
+  // ------------------------------------- main visible ui code --------------------------------------
+
   const panel = showPanel && (
-    <div className="h-full w-full overflow-auto bg-[#313337] text-[#bfbdb6] p-4">
+    <div className="h-full w-full overflow-auto p-4">
       <h3>Panel Content</h3>
       <p>{panel_data}</p>
     </div>
   );
 
   const datasetProfilePanel = showDatasetProfilePanel && (
-    <div className="h-full w-full overflow-auto bg-[#313337] text-[#bfbdb6] p-4">
+    <div className="h-full w-full overflow-auto p-4">
       <h3>Dataset Profile</h3>
       {panelContent}
     </div>
@@ -274,7 +277,7 @@ export default function App({
   const nodeSelector = (
     <span className="relative">
       <button
-        className="border border-[#3f4043] px-5 py-2 text-sm text-[#bfbdb6] hover:bg-gray-950"
+        className="border border-[#3f4043] px-5 py-2 text-sm"
         onClick={() => setIsNodeMenuOpen((open) => !open)}
       >
         + Add Node
@@ -285,7 +288,7 @@ export default function App({
           {Object.entries(nodes_registery).map(([key, value]) => (
             <button
               key={key}
-              className="block w-full px-3 py-2 text-left text-sm text-[#bfbdb6] hover:bg-gray-950"
+              className="block w-full px-3 py-2 text-left text-sm"
               onClick={() => {
                 createNode(value.data, value.type);
                 setIsNodeMenuOpen(false);
@@ -299,6 +302,15 @@ export default function App({
     </span>
   );
 
+  const toolbar = (<></>);
+
+  const header = (<>
+    <div className="flex">
+      <span>Journey</span>
+      <span>My Projects</span><span>/</span><span>Main</span>
+    </div>
+  </>);
+
   return (
     <div className="relative h-screen w-screen overflow-hidden">
       {/* Add Node button */}
@@ -306,23 +318,25 @@ export default function App({
         {nodeSelector}
       </div>
 
-      <div className="flex h-full w-full flex-col bg-[#313337]">
+      <div className="flex h-full w-full flex-col">
         {/* Navbar */}
-        <header className="h-14 shrink-0 border-b border-[#3f4043]" />
+        <header className="h-12 shrink-0 border-b border-[#3f4043]" >{header}</header>
 
         {/* Main workspace */}
         <main className="flex min-h-0 flex-1">
-          <section className="h-full w-1/2 min-w-0 border-r border-[#3f4043]">
+          <section className="h-full w-14 border-r border-[#3f4043]">{toolbar}</section>
+
+          <section className="h-full w-full min-w-0 border-r border-[#3f4043]">
             {reactFlow}
           </section>
 
-          <section className="h-full w-1/2 min-w-0 overflow-auto">
+          {/*<section className="h-full w-1/2 min-w-0 overflow-auto">
             {showDatasetProfilePanel
               ? datasetProfilePanel
               : showPanel
                 ? panel
                 : null}
-          </section>
+          </section>*/}
         </main>
       </div>
     </div>
