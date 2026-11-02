@@ -43,3 +43,5 @@ src/assets
 # Vitest reports and artifacts
 .vitest/
 test/
+
+opencode.json

@@ -1,5 +1,5 @@
-import { Handle, Position, useReactFlow } from '@xyflow/react';
-import { useEffect, useState } from 'react';
+import { Handle, Position } from '@xyflow/react';
+
 import type { DataSetProfile, nodeCategory } from '../../journey/editor/types';
 
 async function get_exec_res(node_id: string) {
@@ -19,7 +19,7 @@ type NodesDataType = {
 };
 
 export default function DataBaseExecutionNode({id, data}: {id: string, data: NodesDataType}) {
-    const { updateNodeData } = useReactFlow();
+
 
 
     async function handle_exec_res() {

@@ -1,16 +1,29 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   ReactFlow,
   applyNodeChanges,
   applyEdgeChanges,
-  Background,
-  Controls,
   addEdge,
   type NodeChange,
   type EdgeChange,
 } from "@xyflow/react";
 import type { nodeType, edgeType, nodeCategory, DataSetProfile } from "./types";
-import DatasetProfile from "./components/DatasetProfile";
+import {
+  MousePointer2,
+  Hand,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Undo2,
+  Redo2,
+  Trash2,
+  Save,
+  Play,
+  PanelRight,
+  Settings,
+  Plus,
+} from "lucide-react";
+
 
 async function send_workflow(nodes: Array<nodeType>, edges: Array<edgeType>) {
   const response = await fetch("http://127.0.0.1:8000/workflows/", {
@@ -47,15 +60,16 @@ export default function App({
 }) {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
-  const [showPanel, setShowPanel] = useState(true);
-  const [panel_data, setPanelData] = useState(
+  const [, setShowPanel] = useState(true);
+  const [, setPanelData] = useState(
     "This is the content of the panel.",
   );
-  const [showDatasetProfilePanel, setShowDatasetProfilePanel] = useState(false);
-  const [datasetProfilePanelData, setDatasetProfilePanelData] = useState<
+  const [, setShowDatasetProfilePanel] = useState(false);
+  const [, setDatasetProfilePanelData] = useState<
     string | DataSetProfile
     >("");
   const [isNodeMenuOpen, setIsNodeMenuOpen] = useState(false);
+  const rfInstance = useRef<any>(null);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<nodeType>[]) =>
@@ -232,15 +246,6 @@ export default function App({
     }
   }
 
-  let panelContent: React.ReactNode;
-
-  if (typeof datasetProfilePanelData === "string") {
-    panelContent = <p>{datasetProfilePanelData}</p>;
-  } else {
-    panelContent = <DatasetProfile profile={datasetProfilePanelData} />;
-  }
-
-
   const reactFlow = (
     <div className="h-full w-full">
       <ReactFlow
@@ -252,6 +257,10 @@ export default function App({
         nodeTypes={nodeTypes}
         colorMode="light"
         fitView
+         onInit={(instance: any) => {
+           rfInstance.current = instance;
+         }}
+
       >
         {/*<Controls />*/}
       </ReactFlow>
@@ -259,20 +268,6 @@ export default function App({
   );
 
   // ------------------------------------- main visible ui code --------------------------------------
-
-  const panel = showPanel && (
-    <div className="h-full w-full overflow-auto p-4">
-      <h3>Panel Content</h3>
-      <p>{panel_data}</p>
-    </div>
-  );
-
-  const datasetProfilePanel = showDatasetProfilePanel && (
-    <div className="h-full w-full overflow-auto p-4">
-      <h3>Dataset Profile</h3>
-      {panelContent}
-    </div>
-  );
 
   const nodeSelector = (
     <span className="relative">
@@ -302,7 +297,116 @@ export default function App({
     </span>
   );
 
-  const toolbar = (<></>);
+  const deleteSelected = () => {
+    const selectedNodeIds = new Set(
+      nodes.filter((n: any) => n.selected).map((n: any) => n.id),
+    );
+    setNodes((prev: any) =>
+      prev.filter((n: any) => !selectedNodeIds.has(n.id)),
+    );
+    setEdges((prev: any) =>
+      prev.filter(
+        (e: any) =>
+          !selectedNodeIds.has(e.source) && !selectedNodeIds.has(e.target),
+      ),
+    );
+  };
+
+  const saveWorkflow = () => {
+    send_workflow(nodes, edges);
+  };
+
+  const runWorkflow = () => {
+    send_workflow(nodes, edges);
+  };
+
+  const toolbarButtonClass =
+    "flex h-10 w-10 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none";
+
+  const toolbar = (
+    <div className="flex h-full w-full flex-col items-center gap-1 py-2">
+      <button
+        className={toolbarButtonClass}
+        title="Select"
+        onClick={() => rfInstance.current?.project?.({ x: 0, y: 0 })}
+      >
+        <MousePointer2 size={18} />
+      </button>
+      <button className={toolbarButtonClass} title="Pan">
+        <Hand size={18} />
+      </button>
+      <div className="my-1 h-px w-8 bg-gray-300" />
+      <button
+        className={toolbarButtonClass}
+        title="Zoom in"
+        onClick={() => rfInstance.current?.zoomIn?.()}
+      >
+        <ZoomIn size={18} />
+      </button>
+      <button
+        className={toolbarButtonClass}
+        title="Zoom out"
+        onClick={() => rfInstance.current?.zoomOut?.()}
+      >
+        <ZoomOut size={18} />
+      </button>
+      <button
+        className={toolbarButtonClass}
+        title="Fit view"
+        onClick={() => rfInstance.current?.fitView?.()}
+      >
+        <Maximize2 size={18} />
+      </button>
+      <div className="my-1 h-px w-8 bg-gray-300" />
+      <button className={toolbarButtonClass} title="Undo">
+        <Undo2 size={18} />
+      </button>
+      <button className={toolbarButtonClass} title="Redo">
+        <Redo2 size={18} />
+      </button>
+      <div className="my-1 h-px w-8 bg-gray-300" />
+      <button
+        className={toolbarButtonClass}
+        title="Delete selected"
+        onClick={deleteSelected}
+      >
+        <Trash2 size={18} />
+      </button>
+      <button
+        className={toolbarButtonClass}
+        title="Add node"
+        onClick={() => setIsNodeMenuOpen((open) => !open)}
+      >
+        <Plus size={18} />
+      </button>
+      <div className="my-1 h-px w-8 bg-gray-300" />
+      <button
+        className={toolbarButtonClass}
+        title="Save workflow"
+        onClick={saveWorkflow}
+      >
+        <Save size={18} />
+      </button>
+      <button
+        className={toolbarButtonClass}
+        title="Run workflow"
+        onClick={runWorkflow}
+      >
+        <Play size={18} />
+      </button>
+      <div className="my-1 h-px w-8 bg-gray-300" />
+      <button
+        className={toolbarButtonClass}
+        title="Toggle panel"
+        onClick={() => setShowPanel((s) => !s)}
+      >
+        <PanelRight size={18} />
+      </button>
+      <button className={toolbarButtonClass} title="Settings">
+        <Settings size={18} />
+      </button>
+    </div>
+  );
 
   const header = (<>
     <div className="flex">
