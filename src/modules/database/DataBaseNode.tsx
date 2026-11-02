@@ -108,13 +108,20 @@ export default function DataBaseNode({id, data}: {id: string, data: NodesDataTyp
     );
 
     return (
-        <div className='bg-white rounded-md border-[0.5] p-2'>
-          {tables_selection}
-          <br/>
-          {columns_selection}
-          <br />
-        <button onClick={() => handle_exec_res()}>show exec res</button>
-          <Handle type="source" position={Position.Bottom} />
+        <div className='bg-white border border-gray-200 rounded-md shadow-sm p-1 min-w-[180px] max-w-[240px]'>
+            <div className='flex items-center gap-1 mb-1'>
+                <div className='w-1.5 h-1.5 rounded-full bg-blue-400' />
+                <span className='text-[10px] font-medium text-gray-800'>Database</span>
+            </div>
+            <div className='text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-0.5'>Input</div>
+            {tables_selection}
+            <div className='mt-1 mb-0.5'>
+                <div className='text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-0.5'>Columns</div>
+                {columns_selection}
+            </div>
+            <button onClick={() => handle_exec_res()} className='mt-0.5 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded hover:bg-blue-200'>show exec res</button>
+            <Handle type="target" position={Position.Left} />
+            <Handle type="source" position={Position.Right} />
         </div>
     );
 }
