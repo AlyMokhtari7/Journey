@@ -4,7 +4,7 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
   Background,
-  Controls,
+    Controls,
   addEdge,
   type NodeChange,
   type EdgeChange,
@@ -12,6 +12,7 @@ import {
 import type { nodeType, edgeType, nodeCategory, DataSetProfile } from "./types";
 import DatasetProfile from "./components/DatasetProfile";
 import Header from "../../modules/ui/Header";
+
 
 async function send_workflow(nodes: Array<nodeType>, edges: Array<edgeType>) {
   const response = await fetch("http://127.0.0.1:8000/workflows/", {
@@ -250,10 +251,10 @@ export default function App({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
-        colorMode="dark"
+        colorMode="light"
         fitView
       >
-        {/*<Controls />*/}
+        <Background variant="dots" />
       </ReactFlow>
     </div>
   );
@@ -307,7 +308,7 @@ export default function App({
         {nodeSelector}
       </div>
 
-      <div className="flex h-full w-full flex-col bg-[#313337]">
+      <div className="flex h-full w-full flex-col">
         {/* Navbar */}
         <Header />
 

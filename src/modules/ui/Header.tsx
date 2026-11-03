@@ -1,4 +1,4 @@
-import { Play } from "lucide-react";
+import { Play, CircleUser } from "lucide-react";
 
 export default function Header() {
     return (
@@ -19,6 +19,7 @@ export default function Header() {
 
             {/* Right: actions */}
             <div className="ml-auto mr-4 flex items-center gap-2">
+              <span className="text-[13px] mr-2 flex flex-row items-center justify-center"><CircleUser className="mr-2"/><span>User One</span></span>
                 <button
                     aria-label="Play"
                     className="flex h-9 w-9 items-center justify-center rounded-lg  text-white border-[#bbb] border-4"
