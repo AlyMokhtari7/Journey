@@ -11,6 +11,7 @@ import {
 } from "@xyflow/react";
 import type { nodeType, edgeType, nodeCategory, DataSetProfile } from "./types";
 import DatasetProfile from "./components/DatasetProfile";
+import Header from "../../modules/ui/Header";
 
 async function send_workflow(nodes: Array<nodeType>, edges: Array<edgeType>) {
   const response = await fetch("http://127.0.0.1:8000/workflows/", {
@@ -308,7 +309,7 @@ export default function App({
 
       <div className="flex h-full w-full flex-col bg-[#313337]">
         {/* Navbar */}
-        <header className="h-14 shrink-0 border-b border-[#3f4043]" />
+        <Header />
 
         {/* Main workspace */}
         <main className="flex min-h-0 flex-1">
