@@ -310,28 +310,35 @@ export default function App({
         {/* Sidebar */}
         <aside className="w-12 h-full shrink-0 border-r border-[#bbb]" />
 
-        <main className="flex min-h-0 flex-1 flex-col">
-          {/* Main workspace */}
-          <div className="flex min-h-0 flex-1">
-            <section className="h-full w-1/2 min-w-0 border-r border-[#bbb]">
+        <main className="flex flex-1 min-h-0">
+          <section className={`h-full border-r border-[#3f4043] ${showDatasetProfilePanel ? 'w-1/2' : 'w-full'} flex-grow`}> 
               {reactFlow}
-            </section>
+                  </section>
+                  <section>
+            {reactFlow}
+              </section>
 
-            <section className="h-full w-1/2 min-w-0 overflow-auto">
-              {showDatasetProfilePanel
-                ? datasetProfilePanel
-                : showPanel
-                  ? panel
-                  : null}
-            </section>
-          </div>
+          <section className={`h-full min-w-0 overflow-auto flex-grow ${showDatasetProfilePanel ? 'w-1/2' : ''}`}> 
+              {datasetProfilePanel}
+          </section>
+
+          <section className={`h-full min-w-0 overflow-auto flex-grow ${showPanel ? 'w-1/2' : ''}`}> 
+              {panel}
+          </section>
         </main>
       </div>
 
       {/* Status bar */}
       <div className="h-8 w-full shrink-0 border-t border-[#bbb] flex items-center justify-end px-2 gap-2">
         <button
-          onClick={() => setShowPanel((s) => !s)}
+          onClick={() => {
+          setShowPanel((s) => {
+             const newState = !s;
+             console.log('New panel state:', newState);
+             return newState;
+          });
+                  }
+                  }
           className="text-[#bfbdb6] hover:text-white p-1"
           title="Toggle panel"
           aria-label="Toggle panel"
