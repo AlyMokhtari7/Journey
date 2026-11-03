@@ -9,6 +9,7 @@ import {
   type NodeChange,
   type EdgeChange,
 } from "@xyflow/react";
+import { Table2, ChartNoAxesColumn } from "lucide-react";
 import type { nodeType, edgeType, nodeCategory, DataSetProfile } from "./types";
 import DatasetProfile from "./components/DatasetProfile";
 import Header from "../../modules/ui/Header";
@@ -302,30 +303,54 @@ export default function App({
   );
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden">
+    <div className="relative flex h-screen w-screen flex-col overflow-hidden">
+      <Header />
+
+      <div className="flex min-h-0 flex-1">
+        {/* Sidebar */}
+        <aside className="w-12 h-full shrink-0 border-r border-[#bbb]" />
+
+        <main className="flex min-h-0 flex-1 flex-col">
+          {/* Main workspace */}
+          <div className="flex min-h-0 flex-1">
+            <section className="h-full w-1/2 min-w-0 border-r border-[#bbb]">
+              {reactFlow}
+            </section>
+
+            <section className="h-full w-1/2 min-w-0 overflow-auto">
+              {showDatasetProfilePanel
+                ? datasetProfilePanel
+                : showPanel
+                  ? panel
+                  : null}
+            </section>
+          </div>
+        </main>
+      </div>
+
+      {/* Status bar */}
+      <div className="h-8 w-full shrink-0 border-t border-[#bbb] flex items-center justify-end px-2 gap-2">
+        <button
+          onClick={() => setShowPanel((s) => !s)}
+          className="text-[#bfbdb6] hover:text-white p-1"
+          title="Toggle panel"
+          aria-label="Toggle panel"
+        >
+          <Table2 color="black" width={16} height={16}/>
+        </button>
+        <button
+          onClick={() => setShowDatasetProfilePanel((s) => !s)}
+          className="text-[#bfbdb6] hover:text-white p-1"
+          title="Toggle dataset profile"
+          aria-label="Toggle dataset profile"
+        >
+          <ChartNoAxesColumn color="black" width={16} height={16}/>
+        </button>
+      </div>
+
       {/* Add Node button */}
       <div className="absolute left-5 bottom-5 z-50">
         {nodeSelector}
-      </div>
-
-      <div className="flex h-full w-full flex-col">
-        {/* Navbar */}
-        <Header />
-
-        {/* Main workspace */}
-        <main className="flex min-h-0 flex-1">
-          <section className="h-full w-1/2 min-w-0 border-r border-[#3f4043]">
-            {reactFlow}
-          </section>
-
-          <section className="h-full w-1/2 min-w-0 overflow-auto">
-            {showDatasetProfilePanel
-              ? datasetProfilePanel
-              : showPanel
-                ? panel
-                : null}
-          </section>
-        </main>
       </div>
     </div>
   );
