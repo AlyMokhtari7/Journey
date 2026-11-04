@@ -2,7 +2,7 @@ import { Play, CircleUser } from "lucide-react";
 
 export default function Header() {
     return (
-        <header className="relative flex h-12 w-full items-center bg-[#fdfcfb] shadow-[0_1px_0_0_rgba(0,0,0,0.06)]">
+        <header className="relative flex h-12 w-full items-center bg-[#fdfcfb] border-b border-[#bbb] shadow-[0_1px_0_0_rgba(0,0,0,0.06)]">
             {/* Left: orange square */}
             <div className="flex items-center">
                 <div className="h-12 w-12 bg-[#d87551] shadow-[0_2px_8px_rgba(196,106,42,0.3)]" />

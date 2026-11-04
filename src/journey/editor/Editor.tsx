@@ -9,7 +9,7 @@ import {
   type NodeChange,
   type EdgeChange,
 } from "@xyflow/react";
-import { Table2, ChartNoAxesColumn } from "lucide-react";
+import { Table2, GitGraph, Plus, ChartNoAxesColumn, RotateCcwClock, Workflow } from "lucide-react";
 import type { nodeType, edgeType, nodeCategory, DataSetProfile } from "./types";
 import DatasetProfile from "./components/DatasetProfile";
 import Header from "../../modules/ui/Header";
@@ -308,23 +308,19 @@ export default function App({
 
       <div className="flex min-h-0 flex-1">
         {/* Sidebar */}
-        <aside className="w-12 h-full shrink-0 border-r border-[#bbb]" />
+        {Sidebar()}
 
         <main className="flex flex-1 min-h-0">
-          <section className={`h-full border-r border-[#3f4043] ${showDatasetProfilePanel ? 'w-1/2' : 'w-full'} flex-grow`}> 
+          <section className={`h-full border-r border-[#3f4043] ${showDatasetProfilePanel ? 'w-1/2' : 'w-full'} flex-grow`}>
               {reactFlow}
                   </section>
                   <section>
             {reactFlow}
               </section>
 
-          <section className={`h-full min-w-0 overflow-auto flex-grow ${showDatasetProfilePanel ? 'w-1/2' : ''}`}> 
-              {datasetProfilePanel}
-          </section>
-
-          <section className={`h-full min-w-0 overflow-auto flex-grow ${showPanel ? 'w-1/2' : ''}`}> 
-              {panel}
-          </section>
+              <section className={`h-full min-w-0 overflow-auto grow ${showDatasetProfilePanel ? 'w-1/2' : showPanel ? 'w-1/2' : ''}`}>
+                  {showDatasetProfilePanel ? datasetProfilePanel : panel}
+              </section>
         </main>
       </div>
 
@@ -362,4 +358,17 @@ export default function App({
     </div>
   );
 
+
+    function Sidebar() {
+        return (
+          <aside className=" h-full shrink-0 border-r border-[#bbb]">
+                <span className="w-12 flex flex-col gap-8 items-center  mt-4">
+                  <Workflow />
+                  <RotateCcwClock />
+                  <GitGraph />
+                  <Plus />
+              </span>
+          </aside>
+        );
+    }
 }
