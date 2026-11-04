@@ -1,17 +1,18 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   ReactFlow,
   applyNodeChanges,
   applyEdgeChanges,
   Background,
-    Controls,
   addEdge,
+  BackgroundVariant,
   type NodeChange,
   type EdgeChange,
 } from "@xyflow/react";
 import { Table2, GitGraph, Plus, ChartNoAxesColumn, RotateCcwClock, Workflow } from "lucide-react";
 import type { nodeType, edgeType, nodeCategory, DataSetProfile } from "./types";
 import DatasetProfile from "./components/DatasetProfile";
+import NodePalette from "./components/NodePalette";
 import Header from "../../modules/ui/Header";
 
 
@@ -58,7 +59,7 @@ export default function App({
   const [datasetProfilePanelData, setDatasetProfilePanelData] = useState<
     string | DataSetProfile
     >("");
-  const [isNodeMenuOpen, setIsNodeMenuOpen] = useState(false);
+  const [isNodePaletteOpen, setIsNodePaletteOpen] = useState(true);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<nodeType>[]) =>
@@ -89,7 +90,7 @@ export default function App({
       ...nodes,
       {
         id,
-        position: { x: 10, y: 10 },
+        position: { x: 80 + (nodes.length % 4) * 40, y: 80 + Math.floor(nodes.length / 4) * 40 },
         type,
         data,
       },
@@ -207,6 +208,20 @@ export default function App({
       },
     };
 
+  const nodePaletteItems = Object.entries(nodes_registery).map(([key, value]) => ({
+    key,
+    label: value.data.label,
+    category: value.data.category,
+    type: value.type,
+  }));
+
+  function handleAddNode(key: string) {
+    const entry = nodes_registery[key];
+    if (entry) {
+      createNode(entry.data, entry.type);
+    }
+  }
+
   function modifyUI(
     mode: "show" | "hide",
     uiElement: "panel" | "DatasetProfile",
@@ -255,7 +270,7 @@ export default function App({
         colorMode="light"
         fitView
       >
-        <Background variant="dots" />
+        <Background variant={BackgroundVariant.Dots} />
       </ReactFlow>
     </div>
   );
@@ -274,37 +289,11 @@ export default function App({
     </div>
   );
 
-  const nodeSelector = (
-    <span className="relative">
-      <button
-        className="border border-[#3f4043] px-5 py-2 text-sm text-[#bfbdb6] hover:bg-gray-950"
-        onClick={() => setIsNodeMenuOpen((open) => !open)}
-      >
-        + Add Node
-      </button>
-
-      {isNodeMenuOpen && (
-        <div className="absolute left-0 bottom-full z-50 mt-1 mb-5 min-w-40 border border-[#3f4043] p-1 shadow-lg">
-          {Object.entries(nodes_registery).map(([key, value]) => (
-            <button
-              key={key}
-              className="block w-full px-3 py-2 text-left text-sm text-[#bfbdb6] hover:bg-gray-950"
-              onClick={() => {
-                createNode(value.data, value.type);
-                setIsNodeMenuOpen(false);
-              }}
-            >
-              {key}
-            </button>
-          ))}
-        </div>
-      )}
-    </span>
-  );
+  // Node palette is now rendered as a floating panel next to the sidebar.
 
   return (
     <div className="relative flex h-screen w-screen flex-col overflow-hidden">
-      <Header />
+      <Header onRun={() => send_workflow(nodes, edges)} />
 
       <div className="flex min-h-0 flex-1">
         {/* Sidebar */}
@@ -351,22 +340,33 @@ export default function App({
         </button>
       </div>
 
-      {/* Add Node button */}
-      <div className="absolute left-5 bottom-5 z-50">
-        {nodeSelector}
-      </div>
+      {/* Floating node palette */}
+      <NodePalette
+        items={nodePaletteItems}
+        onAdd={handleAddNode}
+        open={isNodePaletteOpen}
+      />
+
     </div>
   );
 
 
     function Sidebar() {
         return (
-          <aside className=" h-full shrink-0 border-r border-[#bbb]">
-                <span className="w-12 flex flex-col gap-8 items-center  mt-4">
-                  <Workflow />
-                  <RotateCcwClock />
-                  <GitGraph />
-                  <Plus />
+          <aside className="h-full w-12 shrink-0 border-r border-[#bbb] bg-white">
+                <span className="flex h-full w-12 flex-col items-center gap-6 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsNodePaletteOpen((open) => !open)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100"
+                    title="Toggle node palette"
+                    aria-label="Toggle node palette"
+                  >
+                    <Plus size={18} />
+                  </button>
+                  <Workflow size={18} />
+                  <RotateCcwClock size={18} />
+                  <GitGraph size={18} />
               </span>
           </aside>
         );

@@ -1,6 +1,10 @@
 import { Play, CircleUser } from "lucide-react";
 
-export default function Header() {
+type HeaderProps = {
+  onRun?: () => void;
+};
+
+export default function Header({ onRun }: HeaderProps) {
     return (
         <header className="relative flex h-12 w-full items-center bg-[#fdfcfb] border-b border-[#bbb] shadow-[0_1px_0_0_rgba(0,0,0,0.06)]">
             {/* Left: orange square */}
@@ -22,6 +26,7 @@ export default function Header() {
               <span className="text-[13px] mr-2 flex flex-row items-center justify-center"><CircleUser className="mr-2"/><span>User One</span></span>
                 <button
                     aria-label="Play"
+                    onClick={onRun}
                     className="flex h-9 w-9 items-center justify-center rounded-lg  text-white border-[#bbb] border-4"
                 >
                   <Play color="rgb(52, 165, 91)" fill="rgb(52, 165, 91)"/>
