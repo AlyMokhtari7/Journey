@@ -1,28 +1,18 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ReactFlow,
   applyNodeChanges,
   applyEdgeChanges,
+  Background,
+    Controls,
   addEdge,
   type NodeChange,
   type EdgeChange,
 } from "@xyflow/react";
+import { Table2, GitGraph, Plus, ChartNoAxesColumn, RotateCcwClock, Workflow } from "lucide-react";
 import type { nodeType, edgeType, nodeCategory, DataSetProfile } from "./types";
-import {
-  MousePointer2,
-  Hand,
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  Undo2,
-  Redo2,
-  Trash2,
-  Save,
-  Play,
-  PanelRight,
-  Settings,
-  Plus,
-} from "lucide-react";
+import DatasetProfile from "./components/DatasetProfile";
+import Header from "../../modules/ui/Header";
 
 
 async function send_workflow(nodes: Array<nodeType>, edges: Array<edgeType>) {
@@ -60,16 +50,15 @@ export default function App({
 }) {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
-  const [, setShowPanel] = useState(true);
-  const [, setPanelData] = useState(
+  const [showPanel, setShowPanel] = useState(true);
+  const [panel_data, setPanelData] = useState(
     "This is the content of the panel.",
   );
-  const [, setShowDatasetProfilePanel] = useState(false);
-  const [, setDatasetProfilePanelData] = useState<
+  const [showDatasetProfilePanel, setShowDatasetProfilePanel] = useState(false);
+  const [datasetProfilePanelData, setDatasetProfilePanelData] = useState<
     string | DataSetProfile
     >("");
   const [isNodeMenuOpen, setIsNodeMenuOpen] = useState(false);
-  const rfInstance = useRef<any>(null);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<nodeType>[]) =>
@@ -215,8 +204,7 @@ export default function App({
           modify_ui: modifyUI,
         },
         type: "",
-    },
-
+      },
     };
 
   function modifyUI(
@@ -246,6 +234,15 @@ export default function App({
     }
   }
 
+  let panelContent: React.ReactNode;
+
+  if (typeof datasetProfilePanelData === "string") {
+    panelContent = <p>{datasetProfilePanelData}</p>;
+  } else {
+    panelContent = <DatasetProfile profile={datasetProfilePanelData} />;
+  }
+
+
   const reactFlow = (
     <div className="h-full w-full">
       <ReactFlow
@@ -257,22 +254,30 @@ export default function App({
         nodeTypes={nodeTypes}
         colorMode="light"
         fitView
-         onInit={(instance: any) => {
-           rfInstance.current = instance;
-         }}
-
       >
-        {/*<Controls />*/}
+        <Background variant="dots" />
       </ReactFlow>
     </div>
   );
 
-  // ------------------------------------- main visible ui code --------------------------------------
+  const panel = showPanel && (
+    <div className="h-full w-full overflow-auto bg-[#313337] text-[#bfbdb6] p-4">
+      <h3>Panel Content</h3>
+      <p>{panel_data}</p>
+    </div>
+  );
+
+  const datasetProfilePanel = showDatasetProfilePanel && (
+    <div className="h-full w-full overflow-auto bg-[#313337] text-[#bfbdb6] p-4">
+      <h3>Dataset Profile</h3>
+      {panelContent}
+    </div>
+  );
 
   const nodeSelector = (
     <span className="relative">
       <button
-        className="border border-[#3f4043] px-5 py-2 text-sm"
+        className="border border-[#3f4043] px-5 py-2 text-sm text-[#bfbdb6] hover:bg-gray-950"
         onClick={() => setIsNodeMenuOpen((open) => !open)}
       >
         + Add Node
@@ -283,7 +288,7 @@ export default function App({
           {Object.entries(nodes_registery).map(([key, value]) => (
             <button
               key={key}
-              className="block w-full px-3 py-2 text-left text-sm"
+              className="block w-full px-3 py-2 text-left text-sm text-[#bfbdb6] hover:bg-gray-950"
               onClick={() => {
                 createNode(value.data, value.type);
                 setIsNodeMenuOpen(false);
@@ -297,153 +302,73 @@ export default function App({
     </span>
   );
 
-  const deleteSelected = () => {
-    const selectedNodeIds = new Set(
-      nodes.filter((n: any) => n.selected).map((n: any) => n.id),
-    );
-    setNodes((prev: any) =>
-      prev.filter((n: any) => !selectedNodeIds.has(n.id)),
-    );
-    setEdges((prev: any) =>
-      prev.filter(
-        (e: any) =>
-          !selectedNodeIds.has(e.source) && !selectedNodeIds.has(e.target),
-      ),
-    );
-  };
-
-  const saveWorkflow = () => {
-    send_workflow(nodes, edges);
-  };
-
-  const runWorkflow = () => {
-    send_workflow(nodes, edges);
-  };
-
-  const toolbarButtonClass =
-    "flex h-10 w-10 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none";
-
-  const toolbar = (
-    <div className="flex h-full w-full flex-col items-center gap-1 py-2">
-      <button
-        className={toolbarButtonClass}
-        title="Select"
-        onClick={() => rfInstance.current?.project?.({ x: 0, y: 0 })}
-      >
-        <MousePointer2 size={18} />
-      </button>
-      <button className={toolbarButtonClass} title="Pan">
-        <Hand size={18} />
-      </button>
-      <div className="my-1 h-px w-8 bg-gray-300" />
-      <button
-        className={toolbarButtonClass}
-        title="Zoom in"
-        onClick={() => rfInstance.current?.zoomIn?.()}
-      >
-        <ZoomIn size={18} />
-      </button>
-      <button
-        className={toolbarButtonClass}
-        title="Zoom out"
-        onClick={() => rfInstance.current?.zoomOut?.()}
-      >
-        <ZoomOut size={18} />
-      </button>
-      <button
-        className={toolbarButtonClass}
-        title="Fit view"
-        onClick={() => rfInstance.current?.fitView?.()}
-      >
-        <Maximize2 size={18} />
-      </button>
-      <div className="my-1 h-px w-8 bg-gray-300" />
-      <button className={toolbarButtonClass} title="Undo">
-        <Undo2 size={18} />
-      </button>
-      <button className={toolbarButtonClass} title="Redo">
-        <Redo2 size={18} />
-      </button>
-      <div className="my-1 h-px w-8 bg-gray-300" />
-      <button
-        className={toolbarButtonClass}
-        title="Delete selected"
-        onClick={deleteSelected}
-      >
-        <Trash2 size={18} />
-      </button>
-      <button
-        className={toolbarButtonClass}
-        title="Add node"
-        onClick={() => setIsNodeMenuOpen((open) => !open)}
-      >
-        <Plus size={18} />
-      </button>
-      <div className="my-1 h-px w-8 bg-gray-300" />
-      <button
-        className={toolbarButtonClass}
-        title="Save workflow"
-        onClick={saveWorkflow}
-      >
-        <Save size={18} />
-      </button>
-      <button
-        className={toolbarButtonClass}
-        title="Run workflow"
-        onClick={runWorkflow}
-      >
-        <Play size={18} />
-      </button>
-      <div className="my-1 h-px w-8 bg-gray-300" />
-      <button
-        className={toolbarButtonClass}
-        title="Toggle panel"
-        onClick={() => setShowPanel((s) => !s)}
-      >
-        <PanelRight size={18} />
-      </button>
-      <button className={toolbarButtonClass} title="Settings">
-        <Settings size={18} />
-      </button>
-    </div>
-  );
-
-  const header = (<>
-    <div className="flex">
-      <span>Journey</span>
-      <span>My Projects</span><span>/</span><span>Main</span>
-    </div>
-  </>);
-
   return (
-    <div className="relative h-screen w-screen overflow-hidden">
+    <div className="relative flex h-screen w-screen flex-col overflow-hidden">
+      <Header />
+
+      <div className="flex min-h-0 flex-1">
+        {/* Sidebar */}
+        {Sidebar()}
+
+        <main className="flex flex-1 min-h-0">
+          <section className={`h-full border-r border-[#3f4043] ${showDatasetProfilePanel ? 'w-1/2' : 'w-full'} flex-grow`}>
+              {reactFlow}
+                  </section>
+                  <section>
+            {reactFlow}
+              </section>
+
+              <section className={`h-full min-w-0 overflow-auto grow ${showDatasetProfilePanel ? 'w-1/2' : showPanel ? 'w-1/2' : ''}`}>
+                  {showDatasetProfilePanel ? datasetProfilePanel : panel}
+              </section>
+        </main>
+      </div>
+
+      {/* Status bar */}
+      <div className="h-8 w-full shrink-0 border-t border-[#bbb] flex items-center justify-end px-2 gap-2">
+        <button
+          onClick={() => {
+          setShowPanel((s) => {
+             const newState = !s;
+             console.log('New panel state:', newState);
+             return newState;
+          });
+                  }
+                  }
+          className="text-[#bfbdb6] hover:text-white p-1"
+          title="Toggle panel"
+          aria-label="Toggle panel"
+        >
+          <Table2 color="black" width={16} height={16}/>
+        </button>
+        <button
+          onClick={() => setShowDatasetProfilePanel((s) => !s)}
+          className="text-[#bfbdb6] hover:text-white p-1"
+          title="Toggle dataset profile"
+          aria-label="Toggle dataset profile"
+        >
+          <ChartNoAxesColumn color="black" width={16} height={16}/>
+        </button>
+      </div>
+
       {/* Add Node button */}
       <div className="absolute left-5 bottom-5 z-50">
         {nodeSelector}
       </div>
-
-      <div className="flex h-full w-full flex-col">
-        {/* Navbar */}
-        <header className="h-12 shrink-0 border-b border-[#3f4043]" >{header}</header>
-
-        {/* Main workspace */}
-        <main className="flex min-h-0 flex-1">
-          <section className="h-full w-14 border-r border-[#3f4043]">{toolbar}</section>
-
-          <section className="h-full w-full min-w-0 border-r border-[#3f4043]">
-            {reactFlow}
-          </section>
-
-          {/*<section className="h-full w-1/2 min-w-0 overflow-auto">
-            {showDatasetProfilePanel
-              ? datasetProfilePanel
-              : showPanel
-                ? panel
-                : null}
-          </section>*/}
-        </main>
-      </div>
     </div>
   );
 
+
+    function Sidebar() {
+        return (
+          <aside className=" h-full shrink-0 border-r border-[#bbb]">
+                <span className="w-12 flex flex-col gap-8 items-center  mt-4">
+                  <Workflow />
+                  <RotateCcwClock />
+                  <GitGraph />
+                  <Plus />
+              </span>
+          </aside>
+        );
+    }
 }
